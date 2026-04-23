@@ -1,0 +1,3 @@
+﻿Welcome to the HVAKR Revit Plug-in Installer.
+
+Please agree to these terms and click continue.

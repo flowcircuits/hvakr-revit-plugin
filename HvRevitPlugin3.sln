@@ -1,0 +1,54 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HvRevitPlugin3", "HvRevitPlugin3\HvRevitPlugin3.csproj", "{826DA05C-8F39-4B29-92B6-27EC97DE3658}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HvRevitUi", "HvRevitUi\HvRevitUi.csproj", "{12169521-83B6-4531-BC31-A5DDA5EE6274}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HvRevitUiTest", "HvRevitUiTest\HvRevitUiTest.csproj", "{395420B3-C8EF-4D2F-891D-D1024A92A748}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HvakrApi", "HvakrApi\HvakrApi.csproj", "{DFB8C7DF-94E8-4FAB-B931-04A70BBC471A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HvakrApi.Tests", "HvakrApi.Tests\HvakrApi.Tests.csproj", "{FAD2060C-284C-45B6-A7EB-8DA7F273114E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{37AC264A-05A9-42EC-9638-87CE3BDF4E3F}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{826DA05C-8F39-4B29-92B6-27EC97DE3658}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{826DA05C-8F39-4B29-92B6-27EC97DE3658}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{826DA05C-8F39-4B29-92B6-27EC97DE3658}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{826DA05C-8F39-4B29-92B6-27EC97DE3658}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12169521-83B6-4531-BC31-A5DDA5EE6274}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12169521-83B6-4531-BC31-A5DDA5EE6274}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12169521-83B6-4531-BC31-A5DDA5EE6274}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12169521-83B6-4531-BC31-A5DDA5EE6274}.Release|Any CPU.Build.0 = Release|Any CPU
+		{395420B3-C8EF-4D2F-891D-D1024A92A748}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{395420B3-C8EF-4D2F-891D-D1024A92A748}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{395420B3-C8EF-4D2F-891D-D1024A92A748}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{395420B3-C8EF-4D2F-891D-D1024A92A748}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFB8C7DF-94E8-4FAB-B931-04A70BBC471A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFB8C7DF-94E8-4FAB-B931-04A70BBC471A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFB8C7DF-94E8-4FAB-B931-04A70BBC471A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFB8C7DF-94E8-4FAB-B931-04A70BBC471A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FAD2060C-284C-45B6-A7EB-8DA7F273114E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FAD2060C-284C-45B6-A7EB-8DA7F273114E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FAD2060C-284C-45B6-A7EB-8DA7F273114E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FAD2060C-284C-45B6-A7EB-8DA7F273114E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D9A2421A-EED6-44CF-B0B9-4B3F6A8BFEFA}
+	EndGlobalSection
+EndGlobal
