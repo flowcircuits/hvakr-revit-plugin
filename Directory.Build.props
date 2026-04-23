@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+    <Revit2025ApiVersion>2025.4.20</Revit2025ApiVersion>
+    <Revit2026ApiVersion>2026.4.0</Revit2026ApiVersion>
+  </PropertyGroup>
+
+</Project>

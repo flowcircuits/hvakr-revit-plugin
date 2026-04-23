@@ -1,0 +1,58 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,xaml}]
+indent_size = 4
+
+[*.{json,yml,yaml,md}]
+indent_size = 2
+end_of_line = lf
+
+[*.sh]
+end_of_line = lf
+
+[*.cs]
+# File-scoped namespaces
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Prefer var when apparent
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:none
+
+# `using var x = ...` over `using (var x = ...)`
+csharp_prefer_simple_using_statement = true:warning
+
+# Primary constructors (C# 12) — we opt in
+csharp_style_prefer_primary_constructors = true:suggestion
+
+# Expression-bodied members for trivial cases
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+
+# Pattern matching
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+
+# Naming: private fields → _camelCase
+dotnet_naming_rule.private_fields.symbols = private_fields
+dotnet_naming_rule.private_fields.style = underscore_camel
+dotnet_naming_rule.private_fields.severity = warning
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+dotnet_naming_style.underscore_camel.required_prefix = _
+
+# Discourage `this.`
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
