@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: windows-latest
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_NOLOGO: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore HVAKR.Revit.sln
+
+      - name: Build
+        run: dotnet build HVAKR.Revit.sln --configuration Debug --no-restore
+
+      - name: Test
+        run: dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Debug --no-build --verbosity normal

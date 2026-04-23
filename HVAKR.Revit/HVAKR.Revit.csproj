@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The .addin manifest points at HVAKR.Revit.dll — keep AssemblyName stable. -->
+    <AssemblyName>HVAKR.Revit</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HVAKR.Revit.UI\HVAKR.Revit.UI.csproj" />
+  </ItemGroup>
+
+  <!-- Revit 2026 SDK. The UI library targets 2025 on purpose (see AGENTS.md -> version skew). Compile-only; Revit supplies these at runtime. -->
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(Revit2026ApiVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(Revit2026ApiVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <!--
+    On Release, copy output into Deploy\Plugin, build the Inno Setup installer,
+    copy it into Deploy\Installer, then run it silently so Revit picks up the new DLL.
+    No-ops in Debug.
+  -->
+  <Target Name="PackageAndInstall" AfterTargets="PostBuildEvent" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <PluginDropDir>$(ProjectDir)Deploy\Plugin\</PluginDropDir>
+      <InstallerDropDir>$(ProjectDir)Deploy\Installer\</InstallerDropDir>
+      <InnoSetupExe>C:\Program Files (x86)\Inno Setup 6\ISCC.exe</InnoSetupExe>
+      <InstallerScript>$(ProjectDir)Installer\hvakr-installer.iss</InstallerScript>
+      <InstallerOutput>$(ProjectDir)Installer\Output\HVAKR-setup.exe</InstallerOutput>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginDropDir);$(InstallerDropDir)" />
+    <Message Text="=== Copying plugin output to $(PluginDropDir) ===" Importance="high" />
+    <Exec Command="xcopy /Y /S &quot;$(ProjectDir)bin\Release\*.dll&quot; &quot;$(PluginDropDir)&quot;" />
+    <Message Text="=== Building Inno Setup installer ===" Importance="high" />
+    <Exec Command="&quot;$(InnoSetupExe)&quot; &quot;$(InstallerScript)&quot;" />
+    <Exec Command="xcopy /Y /S &quot;$(ProjectDir)Installer\Output\*.exe&quot; &quot;$(InstallerDropDir)&quot;" />
+    <Message Text="=== Installing silently ===" Importance="high" />
+    <Exec Command="&quot;$(InstallerOutput)&quot; /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" Condition="Exists('$(InstallerOutput)')" />
+  </Target>
+
+</Project>
