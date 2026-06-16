@@ -37,14 +37,25 @@ public class ExportHandler : IExternalEventHandler
         {
             // We're already on Revit's API thread here. Execute is synchronous, so sync-over-async
             // is unavoidable — but it's contained to this one call site. Don't propagate the pattern.
-            _ = Direction switch
+            switch (Direction)
             {
-                SyncDirection.Create => ApiClient.CreateProjectFromRevitAsync(payloadJson).GetAwaiter().GetResult(),
-                SyncDirection.Update when !string.IsNullOrWhiteSpace(SelectedProjectId) =>
-                    ApiClient.UpdateProjectFromRevitAsync(SelectedProjectId!, payloadJson).GetAwaiter().GetResult(),
-                SyncDirection.Update => ReportNoSelection(),
-                _ => throw new InvalidOperationException($"Unhandled SyncDirection: {Direction}"),
-            };
+                case SyncDirection.Create:
+                    ApiClient.CreateProjectFromRevitAsync(payloadJson).GetAwaiter().GetResult();
+                    TaskDialog.Show("HVAKR", "Created a new HVAKR project from the Revit model.");
+                    break;
+
+                case SyncDirection.Update when !string.IsNullOrWhiteSpace(SelectedProjectId):
+                    ApiClient.UpdateProjectFromRevitAsync(SelectedProjectId!, payloadJson).GetAwaiter().GetResult();
+                    TaskDialog.Show("HVAKR", "Updated the selected HVAKR project from the Revit model.");
+                    break;
+
+                case SyncDirection.Update:
+                    TaskDialog.Show("HVAKR", "No selected project to update.");
+                    break;
+
+                default:
+                    throw new InvalidOperationException($"Unhandled SyncDirection: {Direction}");
+            }
         }
         catch (Exception ex)
         {
@@ -54,12 +65,6 @@ public class ExportHandler : IExternalEventHandler
     }
 
     public string GetName() => "HVAKR Export Handler";
-
-    private static string ReportNoSelection()
-    {
-        TaskDialog.Show("HVAKR", "No selected project to update.");
-        return string.Empty;
-    }
 
     private static string BuildPayloadJson(Document document)
     {

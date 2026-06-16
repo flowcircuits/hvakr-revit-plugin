@@ -109,6 +109,8 @@ double radians = UnitUtils.ConvertToInternalUnits(degrees, UnitTypeId.Degrees);
 
 Don't do `feet / 12.0` or `degrees * PI / 180` inline. `UnitUtils` is the single source of truth.
 
+**Exception — the `?revitPayload` export.** `ExportHandler.BuildPayloadJson` deliberately sends geometry (areas, lengths, volumes) in raw Revit feet and only converts the project rotation to degrees. The `?revitPayload` contract has the HVAKR backend do the length conversion (see `.claude/skills/hvakr-api/SKILL.md`). Do **not** "fix" the export by converting lengths to inches — that double-converts and silently corrupts every exported model. The convert-at-the-boundary rule above applies to anything we read **back** from HVAKR into Revit.
+
 ## Revit Plugin Patterns
 
 ### Ribbon + dockable pane
