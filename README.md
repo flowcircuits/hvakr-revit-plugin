@@ -64,3 +64,7 @@ The workflow intentionally does not build `Release` because Release invokes Inno
 ## Conventions
 
 Coding conventions, Revit-API patterns, and the HVAKR wire contract live in [AGENTS.md](AGENTS.md). Skills for AI collaborators are in [`.agents/skills/`](./.agents/skills/).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). "HVAKR" is a trademark of Flow Circuits, Inc.; see [NOTICE](NOTICE).

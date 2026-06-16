@@ -3,9 +3,9 @@ name: hvakr-api
 description: >-
     HVAKR REST API reference, scoped to the endpoints this Revit plugin uses. Covers authentication,
     the /v0/projects endpoints, and the special `?revitPayload` query flag for round-tripping Revit
-    geometry. For the full HVAKR API surface (calcs, weather, dryside graph, etc.), see the main
-    HVAKR repo at ~/Repositories/hvakr/.agents/skills/hvakr-api/SKILL.md.
-license: Proprietary
+    geometry. For the full HVAKR API surface (calcs, weather, dryside graph, etc.), see the
+    interactive docs at https://api.hvakr.com/v0/docs/.
+license: Apache-2.0
 compatibility: Requires HVAKR_ACCESS_TOKEN env var (or per-user API key in the plugin)
 ---
 
@@ -16,7 +16,6 @@ HVAKR is an HVAC design platform for commercial and residential load calcs per A
 **Base URL:** `https://api.hvakr.com/v0`
 
 **Interactive docs:** https://api.hvakr.com/v0/docs/
-**Full reference (parent repo):** `~/Repositories/hvakr/.agents/skills/hvakr-api/SKILL.md`
 
 ## Authentication
 
