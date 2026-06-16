@@ -21,7 +21,7 @@ public class App : IExternalApplication
         panel.AddItem(new PushButtonData(
             name: "HVAKR_Toggle",
             text: "Show",
-            assemblyLocation: Assembly.GetExecutingAssembly().Location,
+            assemblyName: Assembly.GetExecutingAssembly().Location,
             className: typeof(ToggleDockablePaneCommand).FullName)
         {
             ToolTip = "Show or hide the HVAKR dockable pane",
