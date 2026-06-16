@@ -93,9 +93,10 @@ public partial class MainPane : UserControl
                         accessible[details.Id] = details;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Skip projects we can't access (e.g. insufficient permissions on a specific one).
+                    Logger.LogError($"Skipped project {id} during login", ex);
                 }
             }
 

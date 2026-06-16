@@ -78,7 +78,19 @@ public sealed class Client(HttpClient httpClient, string apiKey)
         }
 
         var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        return response;
+        if (response.IsSuccessStatusCode)
+        {
+            return response;
+        }
+
+        // The HVAKR API holds the real logic, so its error body is the useful diagnostic
+        // (validation messages, permission reasons). EnsureSuccessStatusCode would throw it away.
+        using (response)
+        {
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var detail = string.IsNullOrWhiteSpace(body) ? response.ReasonPhrase : body.Trim();
+            throw new HttpRequestException(
+                $"HVAKR API {method} {path} failed: {(int)response.StatusCode} {response.ReasonPhrase}. {detail}");
+        }
     }
 }
