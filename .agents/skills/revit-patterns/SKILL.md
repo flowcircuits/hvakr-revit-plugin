@@ -5,7 +5,7 @@ description: >-
     external commands, external event handlers, transactions, or any WPF↔Revit threading. Covers
     the Transaction model, IExternalCommand vs IExternalEventHandler, unit conversions, and the
     Revit 2025/2026 API-version-skew convention used in this repo.
-license: Proprietary
+license: Apache-2.0
 compatibility: Autodesk Revit 2025 and 2026 (net8.0-windows)
 ---
 
