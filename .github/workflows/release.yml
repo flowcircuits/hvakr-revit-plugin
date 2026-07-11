@@ -1,0 +1,194 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Strict major.minor.patch version, without a v prefix
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Sign and publish v${{ inputs.version }}
+    if: github.ref == 'refs/heads/master'
+    runs-on: windows-2025
+    environment: production
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_NOLOGO: true
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+      BUCKET: hvakr-desktop-releases
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate version and idempotent tag
+        shell: pwsh
+        run: |
+          if ($env:VERSION -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+            throw "Version must be strict major.minor.patch."
+          }
+          git fetch origin --tags
+          if (git rev-parse --verify --quiet "refs/tags/$env:TAG") {
+            $existing = git rev-list -n 1 $env:TAG
+          }
+          if ($existing -and $existing -ne $env:GITHUB_SHA) {
+            throw "Existing tag $env:TAG resolves to $existing, not $env:GITHUB_SHA."
+          }
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress --yes
+
+      - name: Restore
+        run: dotnet restore HVAKR.Revit.sln
+
+      - name: Build and test
+        shell: pwsh
+        run: |
+          $properties = @(
+            "/p:VersionPrefix=$env:VERSION",
+            "/p:VersionSuffix=",
+            "/p:Version=$env:VERSION",
+            "/p:InformationalVersion=$env:VERSION",
+            "/p:FileVersion=$env:VERSION.0",
+            "/p:AssemblyVersion=$env:VERSION.0"
+          )
+          dotnet build HVAKR.Revit.sln --configuration Release --no-restore @properties
+          dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Release --no-build --verbosity normal @properties
+          dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:PrepareInstaller /p:Configuration=Release @properties
+
+      - name: Azure login with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign plugin DLLs and updater
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
+          files-folder: ${{ github.workspace }}\HVAKR.Revit\Deploy\Plugin
+          files-folder-filter: dll,exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Build installer from signed files
+        shell: pwsh
+        run: dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:SkipPrepareInstaller=true /p:VersionPrefix=$env:VERSION /p:VersionSuffix= /p:Version=$env:VERSION /p:InformationalVersion=$env:VERSION
+
+      - name: Sign installer
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
+          files: ${{ github.workspace }}\HVAKR.Revit\Deploy\Installer\HVAKR-Revit-Plugin-${{ inputs.version }}.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify signatures, versions, and installer behavior
+        shell: pwsh
+        run: |
+          $installer = "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          Get-ChildItem HVAKR.Revit/Deploy/Plugin -Recurse -Include *.dll,*.exe | ForEach-Object {
+            $signature = Get-AuthenticodeSignature $_.FullName
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Flow Circuits') {
+              throw "Invalid Flow Circuits signature: $($_.FullName)"
+            }
+          }
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Flow Circuits') { throw "Installer signature is invalid." }
+          Get-ChildItem HVAKR.Revit/Deploy/Plugin -Recurse -Include HVAKR*.dll,HVAKR*.exe | ForEach-Object {
+            if ($_.VersionInfo.ProductVersion -ne $env:VERSION) { throw "$($_.Name) ProductVersion is $($_.VersionInfo.ProductVersion)." }
+          }
+          if ((Get-Item $installer).VersionInfo.ProductVersion -ne $env:VERSION) { throw "Installer ProductVersion is incorrect." }
+          ./scripts/Test-Installer.ps1 -FirstInstaller $installer
+
+      - name: Authenticate to Google Cloud with GitHub OIDC
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Publish immutable installer and verify public download
+        shell: pwsh
+        run: |
+          $installer = "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          $object = "gs://$env:BUCKET/revit/releases/$env:VERSION/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          gcloud storage cp $installer $object --cache-control="public,max-age=31536000,immutable"
+          $url = "https://storage.googleapis.com/$env:BUCKET/revit/releases/$env:VERSION/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          Invoke-WebRequest $url -OutFile artifacts/public-installer.exe
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne (Get-FileHash artifacts/public-installer.exe -Algorithm SHA256).Hash) {
+            throw "Public immutable installer checksum mismatch."
+          }
+
+      - name: Create or reuse tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $installer = "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          if (!(git ls-remote origin "refs/tags/$env:TAG")) {
+            git tag $env:TAG $env:GITHUB_SHA
+            git push origin $env:TAG
+          }
+          if (gh release view $env:TAG 2>$null) {
+            gh release upload $env:TAG $installer --clobber
+          } else {
+            gh release create $env:TAG $installer --verify-tag --generate-notes --title "HVAKR Revit Plugin $env:VERSION"
+          }
+
+      - name: Publish stable alias and latest manifest last
+        shell: pwsh
+        run: |
+          $installer = "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          gcloud storage cp $installer "gs://$env:BUCKET/revit/HVAKR-Revit-Plugin.exe" --cache-control="no-cache"
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $size = (Get-Item $installer).Length
+          $publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $manifest = [ordered]@{
+            schemaVersion = 1
+            version = $env:VERSION
+            publishedAt = $publishedAt
+            installer = [ordered]@{
+              url = "https://storage.googleapis.com/$env:BUCKET/revit/releases/$env:VERSION/HVAKR-Revit-Plugin-$env:VERSION.exe"
+              sha256 = $hash
+              size = $size
+            }
+            releaseNotesUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$env:TAG"
+          }
+          $manifest | ConvertTo-Json -Depth 4 | Set-Content artifacts/latest.json -Encoding utf8NoBOM
+          gcloud storage cp artifacts/latest.json "gs://$env:BUCKET/revit/latest.json" --cache-control="no-cache"
+
+      - name: Verify stable alias and final manifest
+        shell: pwsh
+        run: |
+          $installer = "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$env:VERSION.exe"
+          Invoke-WebRequest "https://storage.googleapis.com/$env:BUCKET/revit/HVAKR-Revit-Plugin.exe" -OutFile artifacts/stable-installer.exe
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash -ne (Get-FileHash artifacts/stable-installer.exe -Algorithm SHA256).Hash) { throw "Stable alias mismatch." }
+          $latest = Invoke-RestMethod "https://storage.googleapis.com/$env:BUCKET/revit/latest.json"
+          if ($latest.version -ne $env:VERSION) { throw "Published manifest version is $($latest.version)." }
+          if ($latest.installer.sha256 -ne (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()) { throw "Published manifest checksum mismatch." }

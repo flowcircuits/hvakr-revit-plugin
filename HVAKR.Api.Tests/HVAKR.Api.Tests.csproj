@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HVAKR.Api\HVAKR.Api.csproj" />
+    <ProjectReference Include="..\HVAKR.Revit.Updater\HVAKR.Revit.Updater.csproj" />
   </ItemGroup>
 
 </Project>

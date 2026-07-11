@@ -2,23 +2,40 @@
 ; Supports Revit 2025–2026 with dynamic .addin file generation and logging
 
 #define MyAppName "HVAKR Revit Plugin"
-#define MyAppVersion "1.914.12"
-#define MyAppPublisher "HVAKR"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0"
+#endif
+#ifndef PluginSource
+  #define PluginSource "..\Deploy\Plugin"
+#endif
+#ifndef InstallerOutput
+  #define InstallerOutput "Output"
+#endif
+#define MyAppPublisher "Flow Circuits, Inc."
 #define MyAppURL "https://www.hvakr.com/"
 
 [Setup]
 AppId={{21C25DB7-6EBD-4F7D-8891-7FDC50D02A90}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+VersionInfoVersion={#MyAppVersion}.0
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoDescription={#MyAppName}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\HVAKR
+DefaultDirName={localappdata}\Programs\HVAKR\Revit Plugin
 DefaultGroupName=HVAKR
 LicenseFile=license.txt
-PrivilegesRequired=admin
-OutputBaseFilename=HVAKR-Setup
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+UsePreviousAppDir=yes
+UsePreviousPrivileges=yes
+CloseApplications=no
+RestartApplications=no
+OutputDir={#InstallerOutput}
+OutputBaseFilename=HVAKR-Revit-Plugin-{#MyAppVersion}
 SetupIconFile=hvakr.ico
 SolidCompression=yes
 WizardStyle=modern
@@ -27,31 +44,20 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\Deploy\Plugin\net8.0-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PluginSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
 
 [Code]
-var
-  RevitVersionsToCheck: array[0..1] of String;
-
-
-function IsRevitVersionInstalled(version: String): Boolean;
-var
-  key: String;
-begin
-  key := 'SOFTWARE\Autodesk\Revit\Autodesk Revit ' + version;
-  // explicitly check the 64-bit registry view
-  Result := RegKeyExists(HKLM64, key);
-end;
-
-
 procedure CreateAddinFileForVersion(version: String);
 var
   folder, filePath, content: String;
 begin
-  folder := ExpandConstant('{commonappdata}\Autodesk\Revit\Addins\' + version);
+  if IsAdminInstallMode then
+    folder := ExpandConstant('{commonappdata}\Autodesk\Revit\Addins\' + version)
+  else
+    folder := ExpandConstant('{userappdata}\Autodesk\Revit\Addins\' + version);
   filePath := folder + '\HVAKR.addin';
 
   Log('Creating .addin file for Revit ' + version);
@@ -81,22 +87,23 @@ content :=
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
-var
-  i: Integer;
 begin
   if CurStep = ssPostInstall then begin
-    Log('--- Starting Revit add-in installation step ---');
-    RevitVersionsToCheck[0] := '2025';
-    RevitVersionsToCheck[1] := '2026';
+    CreateAddinFileForVersion('2025');
+    CreateAddinFileForVersion('2026');
+  end;
+end;
 
-    for i := 0 to GetArrayLength(RevitVersionsToCheck) - 1 do begin
-      if IsRevitVersionInstalled(RevitVersionsToCheck[i]) then begin
-        Log('Revit ' + RevitVersionsToCheck[i] + ' is installed');
-        CreateAddinFileForVersion(RevitVersionsToCheck[i]);
-      end else begin
-        Log('Revit ' + RevitVersionsToCheck[i] + ' NOT found');
-      end;
-    end;
-    Log('--- Revit add-in installation step complete ---');
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  addinRoot: String;
+begin
+  if CurUninstallStep = usUninstall then begin
+    if IsAdminInstallMode then
+      addinRoot := '{commonappdata}'
+    else
+      addinRoot := '{userappdata}';
+    Delete(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2025\HVAKR.addin'));
+    Delete(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2026\HVAKR.addin'));
   end;
 end;

@@ -2,36 +2,57 @@ using System.Net.Http.Headers;
 using System.Text;
 using HVAKR.Api.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace HVAKR.Api;
 
 /// <summary>
-/// Thin wrapper around the HVAKR v0 REST API.
+/// Thin wrapper around the HVAKR REST API.
 /// One instance per logged-in user — the API key is captured at construction.
 /// </summary>
 public sealed class Client(HttpClient httpClient, string apiKey)
 {
-    private const string BaseUrl = "https://api.hvakr.com/v0";
+    private const string ApiRoot = "https://api.hvakr.com";
 
     private readonly HttpClient _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     private readonly string _apiKey = !string.IsNullOrWhiteSpace(apiKey)
         ? apiKey
         : throw new ArgumentException("API key is required.", nameof(apiKey));
 
-    public async Task<List<string>> GetProjectIdsAsync()
+    public async Task<List<ProjectSummary>> GetProjectsAsync()
     {
-        using var response = await SendAsync(HttpMethod.Get, "/projects").ConfigureAwait(false);
-        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var projects = new List<ProjectSummary>();
+        string? cursor = null;
 
-        var token = JObject.Parse(content)["ids"];
-        if (token is not JArray array)
+        do
         {
-            Logger.LogError("No 'ids' array found in /projects response.");
-            return [];
-        }
+            var path = "/v0/projects?limit=100";
+            if (cursor is not null)
+            {
+                path += $"&cursor={Uri.EscapeDataString(cursor)}";
+            }
 
-        return array.Select(id => id.ToString()).ToList();
+            using var response = await SendAsync(HttpMethod.Get, path).ConfigureAwait(false);
+            var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var page = JsonConvert.DeserializeObject<ProjectListResponse>(content)
+                ?? throw new JsonSerializationException("The project list response was empty.");
+            if (page.Projects.Any(project => string.IsNullOrWhiteSpace(project.Id)))
+            {
+                throw new JsonSerializationException("A project list item is missing its id.");
+            }
+
+            projects.AddRange(page.Projects);
+            if (!page.HasMore)
+            {
+                break;
+            }
+
+            cursor = !string.IsNullOrWhiteSpace(page.NextCursor)
+                ? page.NextCursor
+                : throw new JsonSerializationException("The project list response hasMore=true but no nextCursor.");
+        }
+        while (true);
+
+        return projects;
     }
 
     public async Task<ProjectDetails?> GetProjectDetailsAsync(string projectId, bool expand = false)
@@ -39,7 +60,7 @@ public sealed class Client(HttpClient httpClient, string apiKey)
         if (string.IsNullOrWhiteSpace(projectId))
             throw new ArgumentException("Project ID is required.", nameof(projectId));
 
-        var path = expand ? $"/projects/{projectId}?expand=true" : $"/projects/{projectId}";
+        var path = expand ? $"/v0/projects/{projectId}?expand=true" : $"/v0/projects/{projectId}";
         using var response = await SendAsync(HttpMethod.Get, path).ConfigureAwait(false);
         var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
@@ -47,14 +68,14 @@ public sealed class Client(HttpClient httpClient, string apiKey)
     }
 
     public Task<string> CreateProjectFromRevitAsync(string revitPayloadJson) =>
-        SendRevitPayloadAsync(HttpMethod.Post, "/projects?revitPayload", revitPayloadJson);
+        SendRevitPayloadAsync(HttpMethod.Post, "/revit/v0/projects", revitPayloadJson);
 
     public Task<string> UpdateProjectFromRevitAsync(string projectId, string revitPayloadJson)
     {
         if (string.IsNullOrWhiteSpace(projectId))
             throw new ArgumentException("Project ID is required.", nameof(projectId));
 
-        return SendRevitPayloadAsync(new HttpMethod("PATCH"), $"/projects/{projectId}?revitPayload", revitPayloadJson);
+        return SendRevitPayloadAsync(new HttpMethod("PATCH"), $"/revit/v0/projects/{projectId}", revitPayloadJson);
     }
 
     private async Task<string> SendRevitPayloadAsync(HttpMethod method, string path, string payloadJson)
@@ -69,7 +90,7 @@ public sealed class Client(HttpClient httpClient, string apiKey)
 
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, HttpContent? content = null)
     {
-        using var request = new HttpRequestMessage(method, BaseUrl + path);
+        using var request = new HttpRequestMessage(method, ApiRoot + path);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
         if (content is not null)
