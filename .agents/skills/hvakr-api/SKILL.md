@@ -2,8 +2,8 @@
 name: hvakr-api
 description: >-
     HVAKR REST API reference, scoped to the endpoints this Revit plugin uses. Covers authentication,
-    the /v0/projects endpoints, and the special `?revitPayload` query flag for round-tripping Revit
-    geometry. For the full HVAKR API surface (calcs, weather, dryside graph, etc.), see the
+    the /v0/projects endpoints, and the independently versioned /revit/v0 ingestion namespace for
+    round-tripping Revit geometry. For the full HVAKR API surface, see the
     interactive docs at https://api.hvakr.com/v0/docs/.
 license: Apache-2.0
 compatibility: Requires HVAKR_ACCESS_TOKEN env var (or per-user API key in the plugin)
@@ -39,15 +39,24 @@ Never persist the key to disk. Never log it. Never commit one to tests.
 
 ## Endpoints used by the plugin
 
-### List project IDs
+### List projects
 
 ```bash
 curl -s -H "$HVAKR_AUTH" https://api.hvakr.com/v0/projects
 ```
 
-Response shape: `{ "ids": ["abc123", "def456", ...] }`
+Response shape:
 
-C# consumer: `Client.GetProjectIdsAsync()`. Parses `json["ids"]` as a `JArray`.
+```json
+{
+  "projects": [{ "id": "abc123", "name": "My Office", "address": "123 Main St" }],
+  "hasMore": false,
+  "nextCursor": null
+}
+```
+
+C# consumer: `Client.GetProjectsAsync()`. It requests up to 100 summaries per page and follows
+`nextCursor` until `hasMore` is false.
 
 ### Get project
 
@@ -71,10 +80,10 @@ Response deserializes to `HVAKR.Api.Models.ProjectDetails`. Key fields: `Id`, `N
 ```bash
 curl -X POST -H "$HVAKR_AUTH" -H "Content-Type: application/json" \
   -d '{ ... revit payload ... }' \
-  "https://api.hvakr.com/v0/projects?revitPayload"
+  "https://api.hvakr.com/revit/v0/projects"
 ```
 
-The `?revitPayload` flag tells the backend to interpret the body as **Revit-extracted geometry**, not a full HVAKR project. Payload shape (camelCase, serialized with `CamelCasePropertyNamesContractResolver`):
+The independently versioned `/revit/v0` namespace accepts **Revit-extracted geometry**, not a full HVAKR project. Payload shape (camelCase, serialized with `CamelCasePropertyNamesContractResolver`):
 
 ```json
 {
@@ -105,7 +114,7 @@ C# consumer: `Client.CreateProjectFromRevitAsync(string revitPayloadJson)`.
 ```bash
 curl -X PATCH -H "$HVAKR_AUTH" -H "Content-Type: application/json" \
   -d '{ ... revit payload ... }' \
-  "https://api.hvakr.com/v0/projects/{id}?revitPayload"
+  "https://api.hvakr.com/revit/v0/projects/{id}"
 ```
 
 Same payload shape as POST. Merges the Revit geometry into an existing HVAKR project.
@@ -120,14 +129,14 @@ For outbound payloads, we serialize with `CamelCasePropertyNamesContractResolver
 
 ## When wire shape changes
 
-The `?revitPayload` contract is shared between this repo and the HVAKR monorepo backend. When you add or rename a field:
+The `/revit/v0` contract is shared between this repo and the HVAKR monorepo backend. When you add or rename a field:
 
 1. Update the model class / anonymous type in `ExportHandler`.
-2. Update the backend handler (search the HVAKR monorepo for `revitPayload`).
+2. Update the backend handler (search the HVAKR monorepo for `/revit/v0` or `validateRevitDataV0`).
 3. Ship both in the same release cycle. The plugin auto-updates on next user install, so slight drift is tolerable, but breaking renames will cause silent data loss.
 
 ## Rate limits / errors
 
-The API uses standard HTTP status codes. `Client` calls `response.EnsureSuccessStatusCode()` internally — errors bubble as `HttpRequestException`. `ExportHandler` catches and surfaces them via `TaskDialog.Show("HVAKR", ex.Message)` and logs via `Logger.LogError`.
+The API uses standard HTTP status codes and returns `{ error: { code, message, details? }, requestId }` on failures. `Client` includes the response body in its `HttpRequestException`; `ExportHandler` catches and surfaces it via `TaskDialog.Show("HVAKR", ex.Message)` and logs via `Logger.LogError`.
 
-There is no formal rate limit today. Be polite — the project-list login flow does N+1 (list IDs, then get each by ID). For a user with many projects this is slow; consider batching if we ever add a "projects" endpoint that returns names inline.
+The API returns rate-limit headers and may respond with `429`. The project-list login flow consumes the paginated summary response directly, then fetches a fully expanded project only when the user selects it.

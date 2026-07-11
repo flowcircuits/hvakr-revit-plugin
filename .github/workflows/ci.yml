@@ -36,3 +36,29 @@ jobs:
 
       - name: Test
         run: dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Debug --no-build --verbosity normal
+
+      - name: Install Inno Setup
+        if: github.event_name == 'pull_request'
+        run: choco install innosetup --no-progress --yes
+
+      - name: Build 0.1.0 test installer
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: |
+          dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:VersionPrefix=0.1.0 /p:VersionSuffix= /p:Version=0.1.0 /p:InformationalVersion=0.1.0
+          Copy-Item HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.0.exe artifacts/HVAKR-Revit-Plugin-0.1.0.exe
+
+      - name: Build 0.1.1 upgrade test installer
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:VersionPrefix=0.1.1 /p:VersionSuffix= /p:Version=0.1.1 /p:InformationalVersion=0.1.1
+
+      - name: Smoke-test per-user install, upgrade, and uninstall
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe
+
+      - name: Smoke-test all-users installer migration
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe -AllUsers

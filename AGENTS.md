@@ -51,13 +51,15 @@ It hosts `MainPane` in a plain WPF window. Login and project list loading work w
 ```bash
 dotnet restore                                   # restore NuGet packages
 dotnet build HVAKR.Revit.sln -c Debug            # build all — fast path
-dotnet build HVAKR.Revit.sln -c Release          # build + run Inno Setup installer (Windows only)
+dotnet build HVAKR.Revit.sln -c Release          # build only; never installs implicitly
+dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release  # package installer
+dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:InstallLocal /p:Configuration=Release    # explicit local install
 dotnet test HVAKR.Api.Tests                      # integration tests (read HVAKR_ACCESS_TOKEN)
 dotnet run --project HVAKR.Revit.UI.Harness      # standalone UI harness
 dotnet format HVAKR.Revit.sln                    # run formatter / style analyzers
 ```
 
-In `Release` configuration on Windows, the `HVAKR.Revit` csproj runs a `PackageAndInstall` target that copies DLLs to `HVAKR.Revit\Deploy\Plugin`, invokes Inno Setup (`ISCC.exe`), then silently runs the installer. This reinstalls the plugin into Revit on every Release build.
+On Windows, `BuildInstaller` publishes the updater, copies plugin dependencies to `HVAKR.Revit\Deploy\Plugin`, and invokes Inno Setup. `InstallLocal` first refuses to run while Revit is open and then installs silently. A normal Release build never installs anything.
 
 ### Cross-platform caveats
 
@@ -65,7 +67,7 @@ The solution targets `net8.0-windows` everywhere and references `RevitAPI.dll` /
 
 - `HVAKR.Revit` and `HVAKR.Revit.UI` only build on Windows with Revit installed.
 - `HVAKR.Api` and `HVAKR.Api.Tests` build anywhere once `-windows` is dropped from the TFM.
-- Release builds invoke Inno Setup and must be on Windows.
+- Installer targets invoke Inno Setup and must be on Windows.
 
 On macOS/Linux, a full solution build won't succeed; read the source and reason about correctness instead. A Windows runner verifies.
 
@@ -91,7 +93,7 @@ There's no pre-commit hook. Treat `dotnet build -c Debug` + `dotnet test HVAKR.A
 
 - Outbound payloads are camelCase: serialize with `CamelCasePropertyNamesContractResolver`. The API expects it.
 - Inbound models in `HVAKR.Api.Models` use PascalCase property names and rely on Newtonsoft's case-insensitive matching. Don't add `[JsonProperty]` unless the wire name actually differs.
-- Use `JObject`/`JToken` for one-off dynamic extraction (see `Client.GetProjectIdsAsync`); use typed deserialization for well-known shapes (`ProjectDetails`).
+- Use `JObject`/`JToken` for one-off dynamic extraction; use typed deserialization for well-known shapes (`ProjectListResponse`, `ProjectDetails`).
 
 ### Unit system — important
 
@@ -109,7 +111,7 @@ double radians = UnitUtils.ConvertToInternalUnits(degrees, UnitTypeId.Degrees);
 
 Don't do `feet / 12.0` or `degrees * PI / 180` inline. `UnitUtils` is the single source of truth.
 
-**Exception — the `?revitPayload` export.** `ExportHandler.BuildPayloadJson` deliberately sends geometry (areas, lengths, volumes) in raw Revit feet and only converts the project rotation to degrees. The `?revitPayload` contract has the HVAKR backend do the length conversion (see `.claude/skills/hvakr-api/SKILL.md`). Do **not** "fix" the export by converting lengths to inches — that double-converts and silently corrupts every exported model. The convert-at-the-boundary rule above applies to anything we read **back** from HVAKR into Revit.
+**Exception — Revit ingestion exports.** `ExportHandler.BuildPayloadJson` deliberately sends geometry (areas, lengths, volumes) in raw Revit feet and only converts the project rotation to degrees. The `/revit/v0` contract has the HVAKR backend do the length conversion (see `.claude/skills/hvakr-api/SKILL.md`). Do **not** "fix" the export by converting lengths to inches — that double-converts and silently corrupts every exported model. The convert-at-the-boundary rule above applies to anything we read **back** from HVAKR into Revit.
 
 ## Revit Plugin Patterns
 
@@ -166,12 +168,12 @@ Endpoints currently consumed by the plugin:
 
 | Method | Path                                   | Caller                                  |
 | ------ | -------------------------------------- | --------------------------------------- |
-| GET    | `/v0/projects`                         | `Client.GetProjectIdsAsync`             |
+| GET    | `/v0/projects`                         | `Client.GetProjectsAsync`               |
 | GET    | `/v0/projects/{id}[?expand=true]`      | `Client.GetProjectDetailsAsync`         |
-| POST   | `/v0/projects?revitPayload`            | `Client.CreateProjectFromRevitAsync`    |
-| PATCH  | `/v0/projects/{id}?revitPayload`       | `Client.UpdateProjectFromRevitAsync`    |
+| POST   | `/revit/v0/projects`                   | `Client.CreateProjectFromRevitAsync`    |
+| PATCH  | `/revit/v0/projects/{id}`              | `Client.UpdateProjectFromRevitAsync`    |
 
-`?revitPayload` is a query flag that tells the HVAKR backend to interpret the body as `{ projectAddress, projectName, projectRotationDegrees, revitSpaces[] }` instead of the normal project schema. When field names change on one side, update the other in the same release cycle.
+The Revit ingestion namespace is versioned independently from the core `/v0` API. Its request body is `{ projectAddress, projectName, projectRotationDegrees, revitSpaces[] }`. When field names change on one side, update the other in the same release cycle.
 
 See `.claude/skills/hvakr-api/SKILL.md` for the API reference, or the interactive docs at https://api.hvakr.com/v0/docs/.
 
@@ -185,10 +187,10 @@ See `.claude/skills/hvakr-api/SKILL.md` for the API reference, or the interactiv
 ## Deploy & Installer
 
 - Script: `HVAKR.Revit/Installer/hvakr-installer.iss`
-- Writes an `HVAKR.addin` into `%ProgramData%\Autodesk\Revit\Addins\{2025,2026}` pointing at `{app}\HVAKR.Revit.dll` with `FullClassName = HVAKR.Revit.App`.
+- Fresh installs write an `HVAKR.addin` into `%AppData%\Autodesk\Revit\Addins\{2025,2026}` pointing at `{app}\HVAKR.Revit.dll` with `FullClassName = HVAKR.Revit.App`. Upgrades from the legacy all-users installer preserve its `%ProgramData%` manifests and install location.
 - The AddInId GUID (`F6EF6882-...`) is stable — changing it leaves users with two plugins installed.
 - Bump `MyAppVersion` in the `.iss` when cutting a release.
-- The `PackageAndInstall` MSBuild target in `HVAKR.Revit.csproj` runs ISCC and installs silently on every Release build. Keep the `'$(Configuration)' == 'Release'` condition so Debug builds don't stomp on the installed plugin.
+- `BuildInstaller` packages without installing. `InstallLocal` is the only developer target that installs, and it refuses to run while Revit is open.
 
 ## Common Pitfalls
 
