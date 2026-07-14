@@ -200,6 +200,7 @@ public sealed class UpdateService
         }
 
         var temporaryPath = installerPath + ".download";
+        var installerMoved = false;
         try
         {
             using var response = await _httpClient.GetAsync(
@@ -220,12 +221,14 @@ public sealed class UpdateService
                 await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            VerifyInstaller(temporaryPath, manifest.Installer);
             File.Move(temporaryPath, installerPath, true);
+            installerMoved = true;
+            VerifyInstaller(installerPath, manifest.Installer);
         }
         catch
         {
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            if (installerMoved && File.Exists(installerPath)) File.Delete(installerPath);
             throw;
         }
     }
