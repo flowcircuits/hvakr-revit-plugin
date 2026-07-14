@@ -73,7 +73,7 @@ curl -s -H "$HVAKR_AUTH" "https://api.hvakr.com/v0/projects/{id}?expand=spaces"
 
 C# consumer: `Client.GetProjectDetailsAsync(string projectId, bool expand = false)`. The client always sends `?expand=true` when `expand` is true (normalized).
 
-Response deserializes to `HVAKR.Api.Models.ProjectDetails`. Key fields: `Id`, `Name`, `Address`, `Elevation`, `Latitude`, `Longitude`, `Spaces` (dict of `SpaceDetails`, populated only when expanded).
+Response deserializes to `HVAKR.Api.Models.ProjectDetails`. Key fields: `Id`, `Name`, `Address`, `Elevation`, `Latitude`, `Longitude`, `EquipmentModes` (the project-level mode registry introduced by the modular equipment config release), and `Spaces` (dict of `SpaceDetails`, populated only when expanded).
 
 ### Create project from Revit geometry
 

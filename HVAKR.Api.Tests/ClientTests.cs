@@ -49,7 +49,7 @@ public class ClientTests
     public async Task GetProjectsAsync_follows_the_paginated_project_summary_contract()
     {
         var handler = new StubHttpMessageHandler(
-            """{"projects":[{"id":"project-a","name":"Alpha"}],"hasMore":true,"nextCursor":"project-a"}""",
+            """{"projects":[{"id":"project-a","name":"Alpha","address":"123 Main St"}],"hasMore":true,"nextCursor":"project-a"}""",
             """{"projects":[{"id":"project-b","name":"Beta"}],"hasMore":false,"nextCursor":null}""");
         using var http = new HttpClient(handler);
         var client = new Client(http, "test-token");
@@ -57,6 +57,7 @@ public class ClientTests
         var projects = await client.GetProjectsAsync();
 
         Assert.Equal(new[] { "project-a", "project-b" }, projects.Select(project => project.Id));
+        Assert.Equal("123 Main St", projects[0].Address);
         Assert.Equal(
             new[]
             {
@@ -64,6 +65,43 @@ public class ClientTests
                 "https://api.hvakr.com/v0/projects?limit=100&cursor=project-a",
             },
             handler.Requests.Select(request => request.RequestUri!.ToString()));
+    }
+
+    [Fact]
+    public async Task GetProjectDetailsAsync_reads_modular_equipment_mode_metadata()
+    {
+        var handler = new StubHttpMessageHandler(
+            """
+            {
+              "id": "project-a",
+              "name": "Alpha",
+              "airflowIncrement": 5,
+              "equipmentModes": {
+                "cooling_mode": {
+                  "id": "cooling_mode",
+                  "loadCondition": "COOLING",
+                  "name": "Cooling",
+                  "description": "Primary cooling mode"
+                }
+              }
+            }
+            """);
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "test-token");
+
+        var project = await client.GetProjectDetailsAsync("project-a", expand: true)
+            ?? throw new XunitException("The stub project response was empty.");
+
+        Assert.Equal(5, project.AirflowIncrement);
+        var modes = project.EquipmentModes
+            ?? throw new XunitException("The project response had no equipment modes.");
+        if (!modes.TryGetValue("cooling_mode", out var mode))
+            throw new XunitException("The project response had no cooling mode.");
+        Assert.Equal("COOLING", mode.LoadCondition);
+        Assert.Equal("Cooling", mode.Name);
+        Assert.Equal(
+            "https://api.hvakr.com/v0/projects/project-a?expand=true",
+            handler.Requests.Single().RequestUri!.ToString());
     }
 
     [Fact]

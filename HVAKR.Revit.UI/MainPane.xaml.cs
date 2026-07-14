@@ -17,11 +17,10 @@ public partial class MainPane : UserControl
 
     private HttpClient? _httpClient;
     private Client? _apiClient;
-    private Dictionary<string, ProjectDetails> _projectsById = new();
-    private ProjectDetails? _selectedProject;
+    private Dictionary<string, ProjectSummary> _projectsById = new();
+    private ProjectSummary? _selectedProject;
     private bool _isLoggedIn;
     private bool _retryingFailedUpdate;
-    private long _projectSelectionVersion;
 
     public MainPane() : this(new RevitExportBridge())
     {
@@ -108,7 +107,7 @@ public partial class MainPane : UserControl
                 return;
             }
 
-            _projectsById = new Dictionary<string, ProjectDetails>();
+            _projectsById = projects.ToDictionary(project => project.Id);
             var items = projects
                 .Select(p => new ProjectListItem(p.Id, p.Name ?? p.Number ?? p.Id))
                 .ToList();
@@ -129,49 +128,23 @@ public partial class MainPane : UserControl
 
     private void Logout()
     {
-        _projectSelectionVersion++;
         _isLoggedIn = false;
         _apiClient = null;
         _selectedProject = null;
-        _projectsById = new Dictionary<string, ProjectDetails>();
+        _projectsById = new Dictionary<string, ProjectSummary>();
         _httpClient?.Dispose();
         _httpClient = null;
         UpdateLoggedInState();
     }
 
-    private async void ProjectPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void ProjectPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ProjectPicker.SelectedItem is not ProjectListItem item) return;
-        if (_apiClient is null) return;
-
-        var selectionVersion = ++_projectSelectionVersion;
         _selectedProject = null;
         AddressLabel.Text = string.Empty;
         ExportButton.IsEnabled = false;
 
-        if (!_projectsById.TryGetValue(item.Id, out var project))
-        {
-            try
-            {
-                var expanded = await _apiClient.GetProjectDetailsAsync(item.Id, expand: true);
-                if (expanded is null) return;
-
-                project = expanded;
-                _projectsById[item.Id] = expanded;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Failed to expand project {item.Id}", ex);
-                return;
-            }
-        }
-
-        if (selectionVersion != _projectSelectionVersion
-            || ProjectPicker.SelectedItem is not ProjectListItem selectedItem
-            || selectedItem.Id != item.Id)
-        {
-            return;
-        }
+        if (!_projectsById.TryGetValue(item.Id, out var project)) return;
 
         _selectedProject = project;
         AddressLabel.Text = project.Address ?? string.Empty;
