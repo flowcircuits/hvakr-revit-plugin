@@ -3,12 +3,12 @@
   <PropertyGroup>
     <!-- The .addin manifest points at HVAKR.Revit.dll — keep AssemblyName stable. -->
     <AssemblyName>HVAKR.Revit</AssemblyName>
-    <PluginDropDir>$(ProjectDir)Deploy\Plugin</PluginDropDir>
-    <InstallerDropDir>$(ProjectDir)Deploy\Installer</InstallerDropDir>
+    <PluginDropDir>$(MSBuildProjectDirectory)\Deploy\Plugin</PluginDropDir>
+    <InstallerDropDir>$(MSBuildProjectDirectory)\Deploy\Installer</InstallerDropDir>
     <InnoSetupExe Condition="'$(InnoSetupExe)' == ''">C:\Program Files (x86)\Inno Setup 6\ISCC.exe</InnoSetupExe>
-    <InstallerScript>$(ProjectDir)Installer\hvakr-installer.iss</InstallerScript>
+    <InstallerScript>$(MSBuildProjectDirectory)\Installer\hvakr-installer.iss</InstallerScript>
     <InstallerOutput>$(InstallerDropDir)\HVAKR-Revit-Plugin-$(VersionPrefix).exe</InstallerOutput>
-    <UpdaterPublishDir>$(ProjectDir)..\artifacts\updater</UpdaterPublishDir>
+    <UpdaterPublishDir>$(MSBuildProjectDirectory)\..\artifacts\updater</UpdaterPublishDir>
   </PropertyGroup>
 
   <ItemGroup>
