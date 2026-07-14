@@ -177,7 +177,8 @@ public sealed class UpdateService
             startInfo.ArgumentList.Add(argument);
         }
 
-        Process.Start(startInfo) ?? throw new InvalidOperationException("The HVAKR updater could not be started.");
+        if (Process.Start(startInfo) is null)
+            throw new InvalidOperationException("The HVAKR updater could not be started.");
     }
 
     private async Task DownloadAndVerifyAsync(
