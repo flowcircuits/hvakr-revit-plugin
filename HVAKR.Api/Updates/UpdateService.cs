@@ -208,15 +208,17 @@ public sealed class UpdateService
                 cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await using var destination = new FileStream(
+            await using (var destination = new FileStream(
                 temporaryPath,
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
                 81920,
-                useAsync: true);
-            await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+                useAsync: true))
+            {
+                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             VerifyInstaller(temporaryPath, manifest.Installer);
             File.Move(temporaryPath, installerPath, true);
