@@ -1,4 +1,5 @@
 using Xunit;
+using Xunit.Sdk;
 
 namespace HVAKR.Api.Tests;
 
