@@ -4,12 +4,17 @@ public class ProjectDetails
 {
     public string? Id { get; set; }
     public string? Name { get; set; }
+    public string? Number { get; set; }
     public string? Address { get; set; }
     public string? Owner { get; set; }
+    public string? Status { get; set; }
+    public string? ProjectType { get; set; }
     public string? ConstructionType { get; set; }
     public BuildingInfo? Building { get; set; }
     public bool IsTemplate { get; set; }
     public double Elevation { get; set; }
+    public int? AirflowIncrement { get; set; }
+    public Dictionary<string, EquipmentMode>? EquipmentModes { get; set; }
     public WeatherSpec? WeatherSpec { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }

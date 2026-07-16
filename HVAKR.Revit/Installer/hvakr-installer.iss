@@ -103,7 +103,7 @@ begin
       addinRoot := '{commonappdata}'
     else
       addinRoot := '{userappdata}';
-    Delete(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2025\HVAKR.addin'));
-    Delete(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2026\HVAKR.addin'));
+    DeleteFile(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2025\HVAKR.addin'));
+    DeleteFile(ExpandConstant(addinRoot + '\Autodesk\Revit\Addins\2026\HVAKR.addin'));
   end;
 end;

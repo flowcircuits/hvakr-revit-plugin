@@ -177,7 +177,8 @@ public sealed class UpdateService
             startInfo.ArgumentList.Add(argument);
         }
 
-        Process.Start(startInfo) ?? throw new InvalidOperationException("The HVAKR updater could not be started.");
+        if (Process.Start(startInfo) is null)
+            throw new InvalidOperationException("The HVAKR updater could not be started.");
     }
 
     private async Task DownloadAndVerifyAsync(
@@ -199,6 +200,7 @@ public sealed class UpdateService
         }
 
         var temporaryPath = installerPath + ".download";
+        var installerMoved = false;
         try
         {
             using var response = await _httpClient.GetAsync(
@@ -207,22 +209,26 @@ public sealed class UpdateService
                 cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            await using var destination = new FileStream(
+            await using (var destination = new FileStream(
                 temporaryPath,
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
                 81920,
-                useAsync: true);
-            await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
-            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+                useAsync: true))
+            {
+                await source.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+                await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
 
-            VerifyInstaller(temporaryPath, manifest.Installer);
             File.Move(temporaryPath, installerPath, true);
+            installerMoved = true;
+            VerifyInstaller(installerPath, manifest.Installer);
         }
         catch
         {
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            if (installerMoved && File.Exists(installerPath)) File.Delete(installerPath);
             throw;
         }
     }
