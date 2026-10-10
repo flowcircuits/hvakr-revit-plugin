@@ -1,15 +1,17 @@
 # Builds the release path. CI and release.yml both call this so a green PR exercises
-# the same commands as a release, minus Azure login, signing, and publishing.
+# the same commands as a release, minus Azure login, signing, and the GitHub release.
 #
-#   -Step Prepare  Release build, tests, and HVAKR.Revit\Deploy\Plugin staging (signing happens after this)
-#   -Step Package  Installer from the already-staged files, then version checks
+#   -Step Prepare  Release build, tests, and HVAKR.Revit\Deploy\Bundle staging (signing happens after this)
+#   -Step Package  Zips the staged bundle, verifies it, and writes the .sha256 next to the zip
 param(
     [Parameter(Mandatory = $true)]
     [string]$Version,
 
     [Parameter(Mandatory = $true)]
     [ValidateSet("Prepare", "Package")]
-    [string]$Step
+    [string]$Step,
+
+    [switch]$RequireSignature
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,16 +35,13 @@ $properties = @(
 if ($Step -eq "Prepare") {
     dotnet build (Join-Path $root "HVAKR.Revit.sln") --configuration Release @properties
     dotnet test (Join-Path $root "HVAKR.Api.Tests/HVAKR.Api.Tests.csproj") --configuration Release --no-build --verbosity normal @properties
-    dotnet msbuild $project /t:PrepareInstaller /p:Configuration=Release @properties
+    dotnet msbuild $project /t:PrepareBundle /p:Configuration=Release @properties
     return
 }
 
-dotnet msbuild $project /t:BuildInstaller /p:Configuration=Release /p:SkipPrepareInstaller=true @properties
+dotnet msbuild $project /t:BuildBundle /p:Configuration=Release /p:SkipPrepareBundle=true @properties
 
-$installer = Join-Path $root "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$Version.exe"
-Get-ChildItem (Join-Path $root "HVAKR.Revit/Deploy/Plugin") -Recurse -Include HVAKR*.dll, HVAKR*.exe | ForEach-Object {
-    if ($_.VersionInfo.ProductVersion -ne $Version) { throw "$($_.Name) ProductVersion is $($_.VersionInfo.ProductVersion)." }
-}
-# Inno pads the ProductVersion string resource with trailing spaces.
-$installerVersion = (Get-Item $installer).VersionInfo.ProductVersion.Trim()
-if ($installerVersion -ne $Version) { throw "Installer ProductVersion is $installerVersion, expected $Version." }
+$zip = Join-Path $root "HVAKR.Revit/Deploy/HVAKR-Revit-Plugin-$Version.zip"
+& (Join-Path $PSScriptRoot "Test-Bundle.ps1") -Zip $zip -Version $Version -RequireSignature:$RequireSignature
+$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+Set-Content "$zip.sha256" "$hash  $(Split-Path $zip -Leaf)" -NoNewline -Encoding ascii

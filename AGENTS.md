@@ -52,14 +52,15 @@ It hosts `MainPane` in a plain WPF window. Login and project list loading work w
 dotnet restore                                   # restore NuGet packages
 dotnet build HVAKR.Revit.sln -c Debug            # build all — fast path
 dotnet build HVAKR.Revit.sln -c Release          # build only; never installs implicitly
-dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release  # package installer
-dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:InstallLocal /p:Configuration=Release    # explicit local install
+dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildBundle /p:Configuration=Release   # package HVAKR-Revit-Plugin-<v>.zip
+dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:InstallLocal /p:Configuration=Release  # explicit local install
+pwsh scripts/Test-Bundle.ps1 -Zip <zip> -Version <v>                                    # verify a bundle zip
 dotnet test HVAKR.Api.Tests                      # integration tests (read HVAKR_ACCESS_TOKEN)
 dotnet run --project HVAKR.Revit.UI.Harness      # standalone UI harness
 dotnet format HVAKR.Revit.sln                    # run formatter / style analyzers
 ```
 
-On Windows, `BuildInstaller` publishes the updater, copies plugin dependencies to `HVAKR.Revit\Deploy\Plugin`, and invokes Inno Setup. `InstallLocal` first refuses to run while Revit is open and then installs silently. A normal Release build never installs anything.
+`BuildBundle` stages `HVAKR.Revit\Deploy\Bundle\HVAKR.bundle` and zips it to `HVAKR.Revit\Deploy\HVAKR-Revit-Plugin-<v>.zip`. It works on macOS too. `InstallLocal` refuses to run while Revit is open or while the old installer's manifests exist, then copies `HVAKR.bundle` into `%AppData%\Autodesk\ApplicationPlugins`. A normal Release build never installs anything.
 
 ### Cross-platform caveats
 
@@ -67,7 +68,7 @@ The solution targets `net8.0-windows` everywhere. The Revit API comes from compi
 
 - On macOS/Linux, the whole solution compiles with `dotnet build HVAKR.Revit.sln -p:EnableWindowsTargeting=true`. Do this before pushing; CI is not a compiler.
 - `HVAKR.Api.Tests` also runs there with the same flag. The updater tests fail off Windows because `HVAKR.Revit.Updater` is a `win-x64` app; everything else should pass.
-- Installer targets invoke Inno Setup and must be on Windows.
+- `InstallLocal` and the signature checks in `Test-Bundle.ps1 -RequireSignature` are Windows-only.
 - To check Revit API compatibility locally, add `-p:Revit2025ApiVersion=<v> -p:Revit2026ApiVersion=<v>` with the same version for both. CI does this for 2025 and 2026.
 
 ### Pre-commit
@@ -116,7 +117,7 @@ Don't do `feet / 12.0` or `degrees * PI / 180` inline. `UnitUtils` is the single
 
 ### Ribbon + dockable pane
 
-The plugin registers one ribbon tab (`HVAKR`), one panel, one button (`Show`), and one dockable pane GUID (`App.DockablePaneGuid` = `3c649293-...`). Changing the pane GUID or the `AddInId` (`F6EF6882-...` in the installer) orphans every user's existing state, so don't change them.
+The plugin registers one ribbon tab (`HVAKR`), one panel, one button (`Show`), and one dockable pane GUID (`App.DockablePaneGuid` = `3c649293-...`). Changing the pane GUID or the `AddInId` (`F6EF6882-...` in `HVAKR.Revit/Bundle/HVAKR.addin`) orphans every user's existing state, so don't change them.
 
 ### `IExternalCommand` vs `IExternalEventHandler`
 
@@ -183,13 +184,14 @@ See `.claude/skills/hvakr-api/SKILL.md` for the API reference, or the interactiv
 - Never commit a real API key. Tests read it from `HVAKR_ACCESS_TOKEN`.
 - There are no UI tests yet. `HVAKR.Revit.UI.Harness` is the manual dev loop, not an automated one.
 
-## Deploy & Installer
+## Deploy & Bundle
 
-- Script: `HVAKR.Revit/Installer/hvakr-installer.iss`
-- Fresh installs write an `HVAKR.addin` into `%AppData%\Autodesk\Revit\Addins\{2025,2026}` pointing at `{app}\HVAKR.Revit.dll` with `FullClassName = HVAKR.Revit.App`. Upgrades from the legacy all-users installer preserve its `%ProgramData%` manifests and install location.
-- The AddInId GUID (`F6EF6882-...`) is stable — changing it leaves users with two plugins installed.
-- Bump `MyAppVersion` in the `.iss` when cutting a release.
-- `BuildInstaller` packages without installing. `InstallLocal` is the only developer target that installs, and it refuses to run while Revit is open.
+- The shipped artifact is an Autodesk Autoloader bundle zip, not an installer. Users unzip `HVAKR.bundle` into `%AppData%\Autodesk\ApplicationPlugins`. The same bundle is the input for an Autodesk App Store submission.
+- Templates live in `HVAKR.Revit/Bundle/`. `PackageContents.xml` has one `Components` entry per Revit release, each pointing at `Contents/<year>/HVAKR.addin`. The `.addin` uses a relative `Assembly` path.
+- The AddInId GUID (`F6EF6882-...`) is stable — changing it leaves users with two plugins installed. `UpgradeCode` in `PackageContents.xml` is stable for the same reason.
+- There is no version to bump in the repo. The Release workflow passes one version through every assembly, `PackageContents.xml`, the zip name, and the tag.
+- `release.yml` only creates a draft GitHub release. Publishing the draft triggers `publish-to-gcs.yml`, the only path to `gs://hvakr-desktop-releases/revit/`. Never write outside `revit/` in that bucket.
+- `BuildBundle` packages without installing. `InstallLocal` is the only developer target that installs.
 
 ## Common Pitfalls
 
