@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Autodesk Autoloader manifest. PrepareBundle fills in the version and ProductCode tokens.
+  UpgradeCode must never change. ProductCode changes with every AppVersion.
+  Each Components entry needs a matching Contents/<year> folder from PrepareBundle.
+-->
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="Revit" ProductType="Application" Name="HVAKR" AppVersion="@VERSION@" Description="Round-trip Revit spaces with HVAKR for HVAC load calculations and equipment design." Author="Flow Circuits, Inc." Icon="./Contents/Resources/hvakr.ico" OnlineDocumentation="https://www.hvakr.com/" ProductCode="@PRODUCT_CODE@" UpgradeCode="{2BF5EC40-A261-44BF-91C4-EF488909A189}" SupportedLocales="Enu">
+  <CompanyDetails Name="Flow Circuits, Inc." Url="https://www.hvakr.com/" />
+  <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2025" SeriesMax="R2026" />
+  <Components Description="Revit 2025">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2025" SeriesMax="R2025" />
+    <ComponentEntry AppName="HVAKR" Version="@VERSION@" ModuleName="./Contents/2025/HVAKR.addin" AppDescription="HVAKR for Revit 2025" />
+  </Components>
+  <Components Description="Revit 2026">
+    <RuntimeRequirements OS="Win64" Platform="Revit" SeriesMin="R2026" SeriesMax="R2026" />
+    <ComponentEntry AppName="HVAKR" Version="@VERSION@" ModuleName="./Contents/2026/HVAKR.addin" AppDescription="HVAKR for Revit 2026" />
+  </Components>
+</ApplicationPackage>

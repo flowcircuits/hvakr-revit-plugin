@@ -52,35 +52,22 @@ jobs:
       - name: Test
         run: dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Debug --no-build --verbosity normal
 
-      - name: Install pinned Inno Setup
-        shell: pwsh
-        run: |
-          choco upgrade innosetup --version=6.7.1 --allow-downgrade --no-progress --yes
-          $installed = choco list innosetup --exact --limit-output
-          if ($installed -ne "innosetup|6.7.1") { throw "Expected Inno Setup 6.7.1, found $installed." }
-
-      # Same script and steps as release.yml, without Azure login, signing, or publishing.
-      - name: Release path for 0.1.0
+      # Same script and steps as release.yml, without Azure login, signing, or the draft release.
+      - name: Release path (unsigned bundle)
         shell: pwsh
         run: |
           ./scripts/Build-Release.ps1 -Version 0.1.0 -Step Prepare
           ./scripts/Build-Release.ps1 -Version 0.1.0 -Step Package
-          New-Item -ItemType Directory -Force artifacts | Out-Null
-          Copy-Item HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.0.exe artifacts/HVAKR-Revit-Plugin-0.1.0.exe
 
-      - name: Release path for 0.1.1 upgrade
-        shell: pwsh
-        run: |
-          ./scripts/Build-Release.ps1 -Version 0.1.1 -Step Prepare
-          ./scripts/Build-Release.ps1 -Version 0.1.1 -Step Package
-
-      - name: Smoke-test per-user install, upgrade, and uninstall
-        shell: pwsh
-        run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe
-
-      - name: Smoke-test all-users installer migration
-        shell: pwsh
-        run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe -AllUsers
+      - name: Upload unsigned test bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unsigned-test-bundle
+          path: |
+            HVAKR.Revit/Deploy/HVAKR-Revit-Plugin-0.1.0.zip
+            HVAKR.Revit/Deploy/HVAKR-Revit-Plugin-0.1.0.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
 
   revit-api:
     # HVAKR.Revit compiles against 2026 and HVAKR.Revit.UI against 2025, but the same DLLs load in

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!-- AddInId is stable. Changing it leaves users with two HVAKR add-ins. -->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>HVAKR</Name>
+    <AddInId>F6EF6882-4685-4EE2-8D99-8ECEB6914358</AddInId>
+    <VendorId>DESIGN MUX LLC</VendorId>
+    <FullClassName>HVAKR.Revit.App</FullClassName>
+    <Text>HVAKR</Text>
+    <VisibilityMode>AlwaysVisible</VisibilityMode>
+    <Assembly>HVAKR.Revit.dll</Assembly>
+  </AddIn>
+</RevitAddIns>

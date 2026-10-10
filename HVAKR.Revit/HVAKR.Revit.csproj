@@ -3,12 +3,11 @@
   <PropertyGroup>
     <!-- The .addin manifest points at HVAKR.Revit.dll — keep AssemblyName stable. -->
     <AssemblyName>HVAKR.Revit</AssemblyName>
-    <PluginDropDir>$(MSBuildProjectDirectory)\Deploy\Plugin</PluginDropDir>
-    <InstallerDropDir>$(MSBuildProjectDirectory)\Deploy\Installer</InstallerDropDir>
-    <InnoSetupExe Condition="'$(InnoSetupExe)' == ''">C:\Program Files (x86)\Inno Setup 6\ISCC.exe</InnoSetupExe>
-    <InstallerScript>$(MSBuildProjectDirectory)\Installer\hvakr-installer.iss</InstallerScript>
-    <InstallerOutput>$(InstallerDropDir)\HVAKR-Revit-Plugin-$(VersionPrefix).exe</InstallerOutput>
-    <UpdaterPublishDir>$(MSBuildProjectDirectory)\..\artifacts\updater</UpdaterPublishDir>
+    <!-- Deploy\Bundle holds only HVAKR.bundle, so the zip has HVAKR.bundle at its root. -->
+    <BundleStageDir>$(MSBuildProjectDirectory)\Deploy\Bundle</BundleStageDir>
+    <BundleDir>$(BundleStageDir)\HVAKR.bundle</BundleDir>
+    <BundleZip>$(MSBuildProjectDirectory)\Deploy\HVAKR-Revit-Plugin-$(VersionPrefix).zip</BundleZip>
+    <ApplicationPluginsDir>$(APPDATA)\Autodesk\ApplicationPlugins</ApplicationPluginsDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,25 +20,36 @@
     <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(Revit2026ApiVersion)" PrivateAssets="all" ExcludeAssets="runtime" />
   </ItemGroup>
 
-  <Target Name="PrepareInstaller" DependsOnTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(SkipPrepareInstaller)' != 'true'">
-    <RemoveDir Directories="$(PluginDropDir)" />
-    <MakeDir Directories="$(PluginDropDir);$(InstallerDropDir)" />
-    <Exec Command="dotnet publish &quot;$(ProjectDir)..\HVAKR.Revit.Updater\HVAKR.Revit.Updater.csproj&quot; --configuration Release --runtime win-x64 --self-contained true --output &quot;$(UpdaterPublishDir)&quot; /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix= /p:Version=$(VersionPrefix) /p:InformationalVersion=$(VersionPrefix)" />
+  <!-- Stages HVAKR.bundle with one Contents\<year> folder per supported Revit release. Release signs the DLLs here before BuildBundle zips them. -->
+  <Target Name="PrepareBundle" DependsOnTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(SkipPrepareBundle)' != 'true'">
+    <PropertyGroup>
+      <!-- Autodesk wants a new ProductCode per AppVersion. Derive it from the version so rebuilds agree. -->
+      <BundleProductCode>{EEAD87A6-6EC3-4B86-88B6-$([System.Version]::Parse('$(VersionPrefix)').Major.ToString().PadLeft(4, '0'))$([System.Version]::Parse('$(VersionPrefix)').Minor.ToString().PadLeft(4, '0'))$([System.Version]::Parse('$(VersionPrefix)').Build.ToString().PadLeft(4, '0'))}</BundleProductCode>
+    </PropertyGroup>
     <ItemGroup>
       <PluginFiles Include="$(TargetDir)**\*" Exclude="$(TargetDir)RevitAPI.dll;$(TargetDir)RevitAPIUI.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(PluginFiles)" DestinationFiles="@(PluginFiles->'$(PluginDropDir)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-    <Error Condition="!Exists('$(UpdaterPublishDir)\HVAKR.Revit.Updater.exe')" Text="Publish HVAKR.Revit.Updater to $(UpdaterPublishDir) before BuildInstaller." />
-    <Copy SourceFiles="$(UpdaterPublishDir)\HVAKR.Revit.Updater.exe" DestinationFolder="$(PluginDropDir)" />
+    <RemoveDir Directories="$(BundleStageDir)" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFiles="@(PluginFiles->'$(BundleDir)\Contents\2025\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(PluginFiles)" DestinationFiles="@(PluginFiles->'$(BundleDir)\Contents\2026\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="Bundle\HVAKR.addin" DestinationFolder="$(BundleDir)\Contents\2025" />
+    <Copy SourceFiles="Bundle\HVAKR.addin" DestinationFolder="$(BundleDir)\Contents\2026" />
+    <Copy SourceFiles="Bundle\hvakr.ico" DestinationFolder="$(BundleDir)\Contents\Resources" />
+    <WriteLinesToFile File="$(BundleDir)\PackageContents.xml" Lines="$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Bundle\PackageContents.xml').Replace('@VERSION@', '$(VersionPrefix)').Replace('@PRODUCT_CODE@', '$(BundleProductCode)'))" Overwrite="true" />
   </Target>
 
-  <Target Name="BuildInstaller" DependsOnTargets="PrepareInstaller" Condition="'$(Configuration)' == 'Release'">
-    <Exec Command="&quot;$(InnoSetupExe)&quot; /DMyAppVersion=$(VersionPrefix) /DPluginSource=&quot;$(PluginDropDir)&quot; /DInstallerOutput=&quot;$(InstallerDropDir)&quot; &quot;$(InstallerScript)&quot;" />
+  <Target Name="BuildBundle" DependsOnTargets="PrepareBundle" Condition="'$(Configuration)' == 'Release'">
+    <ZipDirectory SourceDirectory="$(BundleStageDir)" DestinationFile="$(BundleZip)" Overwrite="true" />
   </Target>
 
-  <Target Name="InstallLocal" DependsOnTargets="BuildInstaller" Condition="'$(Configuration)' == 'Release'">
+  <Target Name="InstallLocal" DependsOnTargets="PrepareBundle" Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="Exists('$(APPDATA)\Autodesk\Revit\Addins\2025\HVAKR.addin') Or Exists('$(APPDATA)\Autodesk\Revit\Addins\2026\HVAKR.addin') Or Exists('$(ProgramData)\Autodesk\Revit\Addins\2025\HVAKR.addin') Or Exists('$(ProgramData)\Autodesk\Revit\Addins\2026\HVAKR.addin')" Text="Remove the old installer-based HVAKR add-in first (see README) or Revit will load HVAKR twice." />
     <Exec Command="powershell -NoProfile -Command &quot;if (Get-Process Revit -ErrorAction SilentlyContinue) { Write-Error 'Close every Revit process before installing HVAKR locally.'; exit 1 }&quot;" />
-    <Exec Command="&quot;$(InstallerOutput)&quot; /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLOSEAPPLICATIONS /NORESTARTAPPLICATIONS" />
+    <RemoveDir Directories="$(ApplicationPluginsDir)\HVAKR.bundle" />
+    <ItemGroup>
+      <BundleFiles Include="$(BundleDir)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BundleFiles)" DestinationFiles="@(BundleFiles->'$(ApplicationPluginsDir)\HVAKR.bundle\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
 </Project>

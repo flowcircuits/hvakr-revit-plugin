@@ -1,0 +1,91 @@
+name: Publish to GCS
+
+# Runs after a human publishes a draft created by release.yml. GCS is the only place users
+# download from, so it only ever receives a zip from a published, non-prerelease GitHub release.
+# workflow_dispatch reruns an already-published release (for example after a GCS outage).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an already-published release, e.g. v1.2.3
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-to-gcs
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ github.event.release.tag_name || inputs.tag }}
+    if: >-
+      (github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease) ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
+    runs-on: windows-2025
+    environment: production
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # GCP OIDC
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check the release is published, final, from master, and built by release.yml
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$') { throw "Tag $env:TAG is not v<major.minor.patch>." }
+          $version = $Matches[1]
+          # releases/tags/<tag> only returns published releases, never drafts.
+          $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:TAG" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "No published release for $env:TAG." }
+          if ($release.draft -or $release.prerelease) { throw "$env:TAG is a draft or prerelease." }
+          $status = gh api "repos/$env:GITHUB_REPOSITORY/compare/master...$env:TAG" --jq .status
+          if ($status -notin @("identical", "behind")) { throw "$env:TAG is not on master (compare status: $status)." }
+          foreach ($name in @("HVAKR-Revit-Plugin-$version.zip", "HVAKR-Revit-Plugin-$version.zip.sha256")) {
+            $asset = $release.assets | Where-Object name -eq $name
+            if (!$asset) { throw "Release $env:TAG has no $name asset." }
+            if ($asset.uploader.login -ne "github-actions[bot]") { throw "$name was uploaded by $($asset.uploader.login), not release.yml." }
+          }
+          $publishedAt = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$env:TAG" --jq .published_at
+          "VERSION=$version" >> $env:GITHUB_ENV
+          "PUBLISHED_AT=$publishedAt" >> $env:GITHUB_ENV
+          "RELEASE_URL=$($release.html_url)" >> $env:GITHUB_ENV
+          "ASSET_DIGEST=$(($release.assets | Where-Object name -eq "HVAKR-Revit-Plugin-$version.zip").digest)" >> $env:GITHUB_ENV
+
+      - name: Checkout the released commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Download and re-verify the release asset
+        shell: pwsh
+        run: |
+          gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --dir release --pattern "HVAKR-Revit-Plugin-$env:VERSION.zip*"
+          $zip = "release/HVAKR-Revit-Plugin-$env:VERSION.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $recorded = (Get-Content "$zip.sha256" -Raw).Split(" ")[0].Trim()
+          if ($hash -ne $recorded) { throw "SHA256 $hash does not match the recorded $recorded." }
+          if ($env:ASSET_DIGEST -and $env:ASSET_DIGEST -ne "sha256:$hash") { throw "SHA256 $hash does not match GitHub's asset digest $env:ASSET_DIGEST." }
+          ./scripts/Test-Bundle.ps1 -Zip $zip -Version $env:VERSION -RequireSignature
+
+      - name: Authenticate to Google Cloud with GitHub OIDC
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Publish immutable zip, then stable alias, then latest.json
+        shell: pwsh
+        run: ./scripts/Publish-ToGcs.ps1 -Zip "release/HVAKR-Revit-Plugin-$env:VERSION.zip" -Version $env:VERSION -PublishedAt $env:PUBLISHED_AT -ReleaseUrl $env:RELEASE_URL
