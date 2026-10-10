@@ -43,5 +43,6 @@ $installer = Join-Path $root "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$V
 Get-ChildItem (Join-Path $root "HVAKR.Revit/Deploy/Plugin") -Recurse -Include HVAKR*.dll, HVAKR*.exe | ForEach-Object {
     if ($_.VersionInfo.ProductVersion -ne $Version) { throw "$($_.Name) ProductVersion is $($_.VersionInfo.ProductVersion)." }
 }
-$installerVersion = (Get-Item $installer).VersionInfo.ProductVersion
+# Inno pads the ProductVersion string resource with trailing spaces.
+$installerVersion = (Get-Item $installer).VersionInfo.ProductVersion.Trim()
 if ($installerVersion -ne $Version) { throw "Installer ProductVersion is $installerVersion, expected $Version." }
