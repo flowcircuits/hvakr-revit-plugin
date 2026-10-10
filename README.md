@@ -45,13 +45,15 @@ dotnet test HVAKR.Api.Tests
 
 ## CI
 
-GitHub Actions builds the full solution on `windows-latest` in `Debug`:
+GitHub Actions runs on `windows-2025`, the same image as the release workflow:
 
 - restores NuGet packages
-- builds `HVAKR.Revit.sln`
-- runs `HVAKR.Api.Tests`
+- builds `HVAKR.Revit.sln` in `Debug` and runs `HVAKR.Api.Tests`
+- runs `scripts/Build-Release.ps1`, the same release-path build that `release.yml` uses, for unsigned `0.1.0` and `0.1.1` installers
+- verifies per-user installation, in-place upgrade, absence of Revit API assemblies, and complete uninstall
+- compiles the plugin against both the Revit 2025 and 2026 API packages
 
-Pull-request CI also builds unsigned `0.1.0` and `0.1.1` test installers and verifies per-user installation, in-place upgrade, absence of Revit API assemblies, and complete uninstall. Revit behavior still needs manual validation in Revit 2025/2026.
+Revit behavior still needs manual validation in Revit 2025/2026.
 
 The manually dispatched `Release` workflow accepts a strict `major.minor.patch` version and runs only from `master`. Its protected `production` job signs the plugin, updater, and installer with Azure Artifact Signing, publishes a GitHub Release and the public GCS objects, and writes `revit/latest.json` last.
 

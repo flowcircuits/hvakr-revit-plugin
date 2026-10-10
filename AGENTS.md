@@ -63,13 +63,12 @@ On Windows, `BuildInstaller` publishes the updater, copies plugin dependencies t
 
 ### Cross-platform caveats
 
-The solution targets `net8.0-windows` everywhere and references `RevitAPI.dll` / `RevitAPIUI.dll` from `C:\Program Files\Autodesk\Revit 202X`. Practically:
+The solution targets `net8.0-windows` everywhere. The Revit API comes from compile-only NuGet packages (`Nice3point.Revit.Api.*`), so Revit does not need to be installed to compile. Practically:
 
-- `HVAKR.Revit` and `HVAKR.Revit.UI` only build on Windows with Revit installed.
-- `HVAKR.Api` and `HVAKR.Api.Tests` build anywhere once `-windows` is dropped from the TFM.
+- On macOS/Linux, the whole solution compiles with `dotnet build HVAKR.Revit.sln -p:EnableWindowsTargeting=true`. Do this before pushing; CI is not a compiler.
+- `HVAKR.Api.Tests` also runs there with the same flag. The updater tests fail off Windows because `HVAKR.Revit.Updater` is a `win-x64` app; everything else should pass.
 - Installer targets invoke Inno Setup and must be on Windows.
-
-On macOS/Linux, a full solution build won't succeed; read the source and reason about correctness instead. A Windows runner verifies.
+- To check Revit API compatibility locally, add `-p:Revit2025ApiVersion=<v> -p:Revit2026ApiVersion=<v>` with the same version for both. CI does this for 2025 and 2026.
 
 ### Pre-commit
 

@@ -10,23 +10,38 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_NOLOGO: true
+
 jobs:
   build:
     name: Build and Test
-    runs-on: windows-latest
-
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: true
-      DOTNET_NOLOGO: true
+    # Keep in sync with release.yml so CI proves the release runner image.
+    runs-on: windows-2025
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore
         run: dotnet restore HVAKR.Revit.sln
@@ -37,28 +52,68 @@ jobs:
       - name: Test
         run: dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Debug --no-build --verbosity normal
 
-      - name: Install Inno Setup
-        if: github.event_name == 'pull_request'
-        run: choco install innosetup --no-progress --yes
-
-      - name: Build 0.1.0 test installer
-        if: github.event_name == 'pull_request'
+      - name: Install pinned Inno Setup
         shell: pwsh
         run: |
-          dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:VersionPrefix=0.1.0 /p:VersionSuffix= /p:Version=0.1.0 /p:InformationalVersion=0.1.0
+          choco upgrade innosetup --version=6.7.1 --allow-downgrade --no-progress --yes
+          $version = (Get-Item "C:\Program Files (x86)\Inno Setup 6\ISCC.exe").VersionInfo.ProductVersion
+          if ($version -notlike "6.7.1*") { throw "Expected Inno Setup 6.7.1, found $version." }
+
+      # Same script and steps as release.yml, without Azure login, signing, or publishing.
+      - name: Release path for 0.1.0
+        shell: pwsh
+        run: |
+          ./scripts/Build-Release.ps1 -Version 0.1.0 -Step Prepare
+          ./scripts/Build-Release.ps1 -Version 0.1.0 -Step Package
+          New-Item -ItemType Directory -Force artifacts | Out-Null
           Copy-Item HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.0.exe artifacts/HVAKR-Revit-Plugin-0.1.0.exe
 
-      - name: Build 0.1.1 upgrade test installer
-        if: github.event_name == 'pull_request'
+      - name: Release path for 0.1.1 upgrade
         shell: pwsh
-        run: dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:VersionPrefix=0.1.1 /p:VersionSuffix= /p:Version=0.1.1 /p:InformationalVersion=0.1.1
+        run: |
+          ./scripts/Build-Release.ps1 -Version 0.1.1 -Step Prepare
+          ./scripts/Build-Release.ps1 -Version 0.1.1 -Step Package
 
       - name: Smoke-test per-user install, upgrade, and uninstall
-        if: github.event_name == 'pull_request'
         shell: pwsh
         run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe
 
       - name: Smoke-test all-users installer migration
-        if: github.event_name == 'pull_request'
         shell: pwsh
         run: ./scripts/Test-Installer.ps1 -FirstInstaller artifacts/HVAKR-Revit-Plugin-0.1.0.exe -UpgradeInstaller HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-0.1.1.exe -AllUsers
+
+  revit-api:
+    # HVAKR.Revit compiles against 2026 and HVAKR.Revit.UI against 2025, but the same DLLs load in
+    # both. Compiling everything against each API catches a call that is missing from either version.
+    name: Compile against Revit ${{ matrix.revit }} API
+    runs-on: windows-2025
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - revit: "2025"
+            api: 2025.4.20
+          - revit: "2026"
+            api: 2026.4.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-revit${{ matrix.revit }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-revit${{ matrix.revit }}-
+
+      - name: Build
+        run: dotnet build HVAKR.Revit/HVAKR.Revit.csproj --configuration Release /p:Revit2025ApiVersion=${{ matrix.api }} /p:Revit2026ApiVersion=${{ matrix.api }}
