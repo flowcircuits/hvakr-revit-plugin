@@ -117,3 +117,21 @@ jobs:
 
       - name: Build
         run: dotnet build HVAKR.Revit/HVAKR.Revit.csproj --configuration Release /p:Revit2025ApiVersion=${{ matrix.api }} /p:Revit2026ApiVersion=${{ matrix.api }}
+
+  actionlint:
+    name: Lint workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run actionlint
+        run: |
+          curl -sSLo actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz" | sha256sum -c -
+          tar xzf actionlint.tar.gz actionlint
+          ./actionlint -color
