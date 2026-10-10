@@ -59,8 +59,8 @@ jobs:
         shell: pwsh
         run: |
           choco upgrade innosetup --version=6.7.1 --allow-downgrade --no-progress --yes
-          $version = (Get-Item "C:\Program Files (x86)\Inno Setup 6\ISCC.exe").VersionInfo.ProductVersion
-          if ($version -notlike "6.7.1*") { throw "Expected Inno Setup 6.7.1, found $version." }
+          $installed = choco list innosetup --exact --limit-output
+          if ($installed -ne "innosetup|6.7.1") { throw "Expected Inno Setup 6.7.1, found $installed." }
 
       - name: Build and test
         shell: pwsh
