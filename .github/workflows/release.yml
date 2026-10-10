@@ -12,12 +12,17 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     name: Sign and publish v${{ inputs.version }}
     if: github.ref == 'refs/heads/master'
     runs-on: windows-2025
     environment: production
+    timeout-minutes: 60
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       DOTNET_NOLOGO: true
@@ -27,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout master
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -46,33 +51,23 @@ jobs:
           }
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 8.0.x
 
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress --yes
-
-      - name: Restore
-        run: dotnet restore HVAKR.Revit.sln
+      - name: Install pinned Inno Setup
+        shell: pwsh
+        run: |
+          choco upgrade innosetup --version=6.7.1 --allow-downgrade --no-progress --yes
+          $installed = choco list innosetup --exact --limit-output
+          if ($installed -ne "innosetup|6.7.1") { throw "Expected Inno Setup 6.7.1, found $installed." }
 
       - name: Build and test
         shell: pwsh
-        run: |
-          $properties = @(
-            "/p:VersionPrefix=$env:VERSION",
-            "/p:VersionSuffix=",
-            "/p:Version=$env:VERSION",
-            "/p:InformationalVersion=$env:VERSION",
-            "/p:FileVersion=$env:VERSION.0",
-            "/p:AssemblyVersion=$env:VERSION.0"
-          )
-          dotnet build HVAKR.Revit.sln --configuration Release --no-restore @properties
-          dotnet test HVAKR.Api.Tests/HVAKR.Api.Tests.csproj --configuration Release --no-build --verbosity normal @properties
-          dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:PrepareInstaller /p:Configuration=Release @properties
+        run: ./scripts/Build-Release.ps1 -Version $env:VERSION -Step Prepare
 
       - name: Azure login with GitHub OIDC
-        uses: azure/login@v3
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -93,7 +88,7 @@ jobs:
 
       - name: Build installer from signed files
         shell: pwsh
-        run: dotnet msbuild HVAKR.Revit/HVAKR.Revit.csproj /t:BuildInstaller /p:Configuration=Release /p:SkipPrepareInstaller=true /p:VersionPrefix=$env:VERSION /p:VersionSuffix= /p:Version=$env:VERSION /p:InformationalVersion=$env:VERSION
+        run: ./scripts/Build-Release.ps1 -Version $env:VERSION -Step Package
 
       - name: Sign installer
         uses: azure/artifact-signing-action@v2
@@ -118,20 +113,16 @@ jobs:
           }
           $signature = Get-AuthenticodeSignature $installer
           if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Flow Circuits') { throw "Installer signature is invalid." }
-          Get-ChildItem HVAKR.Revit/Deploy/Plugin -Recurse -Include HVAKR*.dll,HVAKR*.exe | ForEach-Object {
-            if ($_.VersionInfo.ProductVersion -ne $env:VERSION) { throw "$($_.Name) ProductVersion is $($_.VersionInfo.ProductVersion)." }
-          }
-          if ((Get-Item $installer).VersionInfo.ProductVersion -ne $env:VERSION) { throw "Installer ProductVersion is incorrect." }
           ./scripts/Test-Installer.ps1 -FirstInstaller $installer
 
       - name: Authenticate to Google Cloud with GitHub OIDC
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Setup Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       - name: Publish immutable installer and verify public download
         shell: pwsh
