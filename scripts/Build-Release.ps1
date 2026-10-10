@@ -43,4 +43,5 @@ $installer = Join-Path $root "HVAKR.Revit/Deploy/Installer/HVAKR-Revit-Plugin-$V
 Get-ChildItem (Join-Path $root "HVAKR.Revit/Deploy/Plugin") -Recurse -Include HVAKR*.dll, HVAKR*.exe | ForEach-Object {
     if ($_.VersionInfo.ProductVersion -ne $Version) { throw "$($_.Name) ProductVersion is $($_.VersionInfo.ProductVersion)." }
 }
-if ((Get-Item $installer).VersionInfo.ProductVersion -ne $Version) { throw "Installer ProductVersion is incorrect." }
+$installerVersion = (Get-Item $installer).VersionInfo.ProductVersion
+if ($installerVersion -ne $Version) { throw "Installer ProductVersion is $installerVersion, expected $Version." }
