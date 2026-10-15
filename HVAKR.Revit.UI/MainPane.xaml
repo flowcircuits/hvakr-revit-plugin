@@ -4,164 +4,487 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             d:DesignHeight="300"
-             d:DesignWidth="300"
-             FontFamily="Segoe UI"
-             FontSize="12"
-             Foreground="#FFF5F5F5"
-             Background="#FF3B4453">
+             d:DesignHeight="600"
+             d:DesignWidth="320"
+             FontFamily="{DynamicResource SansFont}"
+             FontSize="14"
+             Foreground="{DynamicResource TextBrush}"
+             Background="{DynamicResource PaneBackground}">
 
+    <!-- Mirrors the HVAKR design system (https://hvakr.com/design/): palette, HVAKR Sans/Mono,
+         4px radius, 32px controls, bordered flat surfaces. Theme brushes live in Themes/*.xaml. -->
     <UserControl.Resources>
-        <ControlTemplate x:Key="DarkInputTemplate" TargetType="Control">
-            <Border Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    SnapsToDevicePixels="True">
-                <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
-                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
-            </Border>
-        </ControlTemplate>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Light.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style x:Key="DarkInputStyle" TargetType="Control">
-            <Setter Property="BorderBrush" Value="#FF485263"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="#FF3B4453"/>
-            <Setter Property="Foreground" Value="#FFF5F5F5"/>
-            <Setter Property="Padding" Value="2"/>
-            <Setter Property="MinWidth" Value="110"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template" Value="{StaticResource DarkInputTemplate}"/>
-            <Style.Triggers>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF5B87B2"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.56"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+            <FontFamily x:Key="SansFont">/HVAKR.Revit.UI;component/Fonts/#HVAKR Sans, Segoe UI</FontFamily>
+            <FontFamily x:Key="MonoFont">/HVAKR.Revit.UI;component/Fonts/#HVAKR Mono, Consolas</FontFamily>
 
-        <Style TargetType="TextBox" BasedOn="{StaticResource DarkInputStyle}">
-            <Setter Property="CaretBrush" Value="#FFF5F5F5"/>
-        </Style>
+            <SolidColorBrush x:Key="OrangeBrush" Color="#FD491A"/>
+            <SolidColorBrush x:Key="DarkOrangeBrush" Color="#E43102"/>
+            <SolidColorBrush x:Key="LightOrangeBrush" Color="#FFEFEB"/>
 
-        <Style TargetType="PasswordBox" BasedOn="{StaticResource DarkInputStyle}">
-            <Setter Property="CaretBrush" Value="#FFF5F5F5"/>
-        </Style>
+            <!-- Blueprint 16px icons -->
+            <Geometry x:Key="IconLogIn">M11 8c0-.28-.11-.53-.29-.71l-3-3a1.003 1.003 0 00-1.42 1.42L7.59 7H1c-.55 0-1 .45-1 1s.45 1 1 1h6.59L6.3 10.29c-.19.18-.3.43-.3.71a1.003 1.003 0 001.71.71l3-3c.18-.18.29-.43.29-.71zm4-8H9c-.55 0-1 .45-1 1s.45 1 1 1h5v12H9c-.55 0-1 .45-1 1s.45 1 1 1h6c.55 0 1-.45 1-1V1c0-.55-.45-1-1-1z</Geometry>
+            <Geometry x:Key="IconLogOut">M7 14H2V2h5c.55 0 1-.45 1-1s-.45-1-1-1H1C.45 0 0 .45 0 1v14c0 .55.45 1 1 1h6c.55 0 1-.45 1-1s-.45-1-1-1zm8.71-6.71l-3-3a1.003 1.003 0 00-1.42 1.42L12.59 7H6c-.55 0-1 .45-1 1s.45 1 1 1h6.59l-1.29 1.29c-.19.18-.3.43-.3.71a1.003 1.003 0 001.71.71l3-3c.18-.18.29-.43.29-.71 0-.28-.11-.53-.29-.71z</Geometry>
+            <Geometry x:Key="IconExport">M4 6c.28 0 .53-.11.71-.29L7 3.41V11c0 .55.45 1 1 1s1-.45 1-1V3.41l2.29 2.29c.18.19.43.3.71.3a1.003 1.003 0 00.71-1.71l-4-4C8.53.11 8.28 0 8 0s-.53.11-.71.29l-4 4A1.003 1.003 0 004 6zm11 5c-.55 0-1 .45-1 1v2H2v-2c0-.55-.45-1-1-1s-1 .45-1 1v3c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1z</Geometry>
+            <Geometry x:Key="IconPlus">M13 7H9V3c0-.55-.45-1-1-1s-1 .45-1 1v4H3c-.55 0-1 .45-1 1s.45 1 1 1h4v4c0 .55.45 1 1 1s1-.45 1-1V9h4c.55 0 1-.45 1-1s-.45-1-1-1z</Geometry>
+            <Geometry x:Key="IconRefresh">M8 3a5 5 0 00-5 5 1 1 0 01-2 0 7 7 0 017-7c1.72 0 3.62.416 5 1.567V2a1 1 0 112 0v3a1 1 0 01-1 1h-3a1 1 0 110-2h.586C10.702 3.334 9.417 3 8 3zM8 13a5 5 0 005-5 1 1 0 112 0 7 7 0 01-7 7c-1.72 0-3.62-.416-5-1.568V14a1 1 0 11-2 0v-3a1 1 0 011-1h3a1 1 0 110 2h-.586c.884.666 2.169 1 3.586 1z</Geometry>
+            <Geometry x:Key="IconInfo">M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zM7 3h2v2H7V3zm3 10H6v-1h1V7H6V6h3v6h1v1z</Geometry>
+            <Geometry x:Key="IconCaretDown">M12 6.5c0-.28-.22-.5-.5-.5h-7a.495.495 0 00-.37.83l3.5 4c.09.1.22.17.37.17s.28-.07.37-.17l3.5-4c.08-.09.13-.2.13-.33z</Geometry>
 
-        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="BorderBrush" Value="#FF485263"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="MinWidth" Value="110"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-        </Style>
+            <Style x:Key="FocusRing">
+                <Setter Property="Control.Template">
+                    <Setter.Value>
+                        <ControlTemplate>
+                            <Border Margin="-2" CornerRadius="6" BorderThickness="2"
+                                    BorderBrush="{StaticResource OrangeBrush}" SnapsToDevicePixels="True"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
 
-        <Style TargetType="Button">
-            <Setter Property="Width" Value="75"/>
-            <Setter Property="Background" Value="#FF485263"/>
-            <Setter Property="Foreground" Value="#FFF5F5F5"/>
-            <Setter Property="BorderBrush" Value="#FF485263"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4,2"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
-        </Style>
+            <Style x:Key="SectionTitle" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="FieldLabel" TargetType="TextBlock">
+                <Setter Property="Margin" Value="0,0,0,4"/>
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="Section" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource SectionBackground}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>
+
+            <Style x:Key="SectionHeader" TargetType="Border">
+                <Setter Property="MinHeight" Value="40"/>
+                <Setter Property="Padding" Value="16,0"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            </Style>
+
+            <!-- Buttons: the optional Tag holds an icon geometry shown before the content -->
+            <ControlTemplate x:Key="ButtonTemplate" TargetType="ButtonBase">
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}"
+                        CornerRadius="4"
+                        SnapsToDevicePixels="True">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="Center">
+                        <Path x:Name="Icon" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center"
+                              Data="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                              Fill="{TemplateBinding Foreground}"/>
+                        <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    </StackPanel>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="Tag" Value="{x:Null}">
+                        <Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+
+            <Style x:Key="ButtonBaseStyle" TargetType="ButtonBase">
+                <Setter Property="Template" Value="{StaticResource ButtonTemplate}"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+                <Setter Property="MinHeight" Value="32"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="Cursor" Value="Hand"/>
+            </Style>
+
+            <Style x:Key="DefaultButton" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource ButtonDisabledBackground}"/>
+                        <Setter Property="BorderBrush" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="Button" BasedOn="{StaticResource DefaultButton}"/>
+
+            <!-- HVAKR primary keeps its rest color in every state; only the edge deepens. -->
+            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+                <Setter Property="Background" Value="{StaticResource OrangeBrush}"/>
+                <Setter Property="BorderBrush" Value="#1A111418"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="#40111418"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="BorderBrush" Value="#66111418"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{StaticResource DarkOrangeBrush}"/>
+                        <Setter Property="BorderBrush" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{StaticResource LightOrangeBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="MinimalButton" TargetType="Button" BasedOn="{StaticResource ButtonBaseStyle}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource MinimalHoverBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource MinimalPressedBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Inputs own their template: the default Aero2 template ignores border and focus colors. -->
+            <ControlTemplate x:Key="InputTemplate" TargetType="Control">
+                <Grid>
+                    <Border x:Name="FocusRing" Margin="-1" CornerRadius="5" BorderThickness="1"
+                            BorderBrush="{StaticResource OrangeBrush}" Visibility="Hidden" SnapsToDevicePixels="True"/>
+                    <Border x:Name="Field"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                    </Border>
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                        <Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/>
+                        <Setter TargetName="Field" Property="BorderBrush" Value="{StaticResource OrangeBrush}"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+
+            <Style x:Key="InputStyle" TargetType="Control">
+                <Setter Property="Template" Value="{StaticResource InputTemplate}"/>
+                <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource InputBorder}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="6,0"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource InputDisabledBackground}"/>
+                        <Setter Property="BorderBrush" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style TargetType="TextBox" BasedOn="{StaticResource InputStyle}">
+                <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
+            </Style>
+
+            <Style TargetType="PasswordBox" BasedOn="{StaticResource InputStyle}">
+                <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
+            </Style>
+
+            <!-- Select: a default button with a caret that opens a menu -->
+            <Style x:Key="SelectToggle" TargetType="ToggleButton" BasedOn="{StaticResource ButtonBaseStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonBackground}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorder}"/>
+                <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4" SnapsToDevicePixels="True">
+                                <Path Data="{StaticResource IconCaretDown}" Width="16" Height="16" Margin="0,0,8,0"
+                                      HorizontalAlignment="Right" VerticalAlignment="Center"
+                                      Fill="{TemplateBinding Foreground}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonHoverBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonPressedBackground}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource ButtonDisabledBackground}"/>
+                        <Setter Property="BorderBrush" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="MenuScrollBar" TargetType="ScrollBar">
+                <Setter Property="Width" Value="8"/>
+                <Setter Property="MinWidth" Value="8"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Margin="2,0" CornerRadius="2"
+                                                        Background="{DynamicResource MinimalPressedBackground}"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="MenuItem" TargetType="ComboBoxItem">
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBoxItem">
+                            <Border x:Name="Item" Background="Transparent" CornerRadius="4" Padding="8,6"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource MinimalHoverBackground}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource SelectedItemBackground}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource SelectedItemText}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="ComboBox">
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="MaxDropDownHeight" Value="320"/>
+                <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+                <Setter Property="ItemContainerStyle" Value="{StaticResource MenuItem}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <ToggleButton Style="{StaticResource SelectToggle}" Focusable="False" ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                <ContentPresenter Margin="8,0,32,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                                <Popup x:Name="PART_Popup" Placement="Bottom" VerticalOffset="4" HorizontalOffset="-8"
+                                       AllowsTransparency="True" Focusable="False" PopupAnimation="Fade"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}">
+                                    <Border Margin="8,0,8,12" Padding="4"
+                                            Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                            MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                            Background="{DynamicResource MenuBackground}"
+                                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                                            CornerRadius="4">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.2"
+                                                              Color="{DynamicResource ShadowColor}"/>
+                                        </Border.Effect>
+                                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                            <ScrollViewer.Resources>
+                                                <Style TargetType="ScrollBar" BasedOn="{StaticResource MenuScrollBar}"/>
+                                            </ScrollViewer.Resources>
+                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Tag: HVAKR Mono 12px, 20px tall, minimal success intent -->
+            <Style x:Key="SuccessTag" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource SuccessTagBackground}"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Padding" Value="6,0"/>
+                <Setter Property="Height" Value="20"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="TextElement.FontFamily" Value="{StaticResource MonoFont}"/>
+                <Setter Property="TextElement.FontSize" Value="12"/>
+                <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessTagText}"/>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
-    <Border BorderBrush="#FF485263" BorderThickness="1"
-            Background="{Binding Background, RelativeSource={RelativeSource AncestorType=UserControl}}">
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition />
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" x:Name="UpdateBanner" Visibility="Collapsed"
-                    Background="#FF25374B" BorderBrush="#FF5B87B2" BorderThickness="0,0,0,1"
-                    Padding="10">
-                <StackPanel>
-                    <TextBlock x:Name="UpdateMessage" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal">
+        <!-- HVAKR logo (hvakr.com/HVAKRLogo.svg); the wordmark follows the theme text color -->
+        <Viewbox Grid.Row="0" Height="16" Margin="16" HorizontalAlignment="Left">
+            <Canvas Width="1284" Height="240">
+                <Ellipse Width="240" Height="240">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#FD491A" Offset="0"/>
+                            <GradientStop Color="#FD3602" Offset="0.83"/>
+                            <GradientStop Color="#E43102" Offset="0.925"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Path Fill="White" Data="M 104.81 82.7716 C 100.58 86.3216 100.028 92.6292 103.578 96.8599 C 107.128 101.091 113.435 101.642 117.666 98.0925 L 157.5 64.6675 C 161.731 61.1175 162.283 54.8099 158.733 50.5792 C 155.183 46.3484 148.875 45.7966 144.645 49.3466 L 104.81 82.7716 Z M 96 120 C 96 131.046 87.0457 140 76 140 C 64.9543 140 56 131.046 56 120 C 56 108.955 64.9543 100 76 100 C 87.0457 100 96 108.955 96 120 Z M 103.578 143.141 C 107.128 138.91 113.435 138.358 117.666 141.908 L 157.5 175.333 C 161.731 178.883 162.283 185.191 158.733 189.422 C 155.183 193.652 148.875 194.204 144.644 190.654 L 104.81 157.229 C 100.579 153.679 100.028 147.372 103.578 143.141 Z M 122 110 C 116.477 110 112 114.478 112 120 C 112 125.523 116.477 130 122 130 H 174.002 C 179.525 130 184.002 125.523 184.002 120 C 184.002 114.478 179.525 110 174.002 110 H 122 Z"/>
+                <Path Fill="{DynamicResource TextBrush}" Data="M 272 0 V 240 H 312.055 V 133.516 H 395.132 V 240 H 435.022 V 0 H 395.132 V 99.8901 H 312.055 V 0 H 272 Z M 484.143 0 H 527.33 L 575.1 183.4 L 623.099 0 H 666.451 L 594.747 240 H 555.846 L 484.143 0 Z M 685.407 240 H 727.275 L 743 184.451 H 816 L 831.615 240 H 873.648 L 797.165 0 H 761.56 L 685.407 240 Z M 752.3 150.9 H 806.6 L 779.4 54 L 752.3 150.9 Z M 922.11 0 V 240 H 962.164 V 165 L 983.7 138.5 L 1037.99 240 H 1085.3 L 1009.1 105.7 L 1082 0 H 1033.54 L 962.164 109.8 V 0 H 922.11 Z M 1128.98 240 V 0 H 1201.51 C 1217.33 0 1230.74 2.74725 1241.73 8.24176 C 1252.71 13.7363 1261.07 21.8681 1266.78 32.6374 C 1272.61 43.2967 1275.52 56.5385 1275.52 72.3626 C 1275.52 84.3407 1273.7 94.8901 1270.08 104.011 C 1266.56 113.132 1261.45 120.824 1254.75 127.088 C 1248.04 133.242 1245.6 134.293 1239.3 137.7 L 1284 240 H 1240.74 L 1201.6 147.857 H 1169.03 V 240 H 1128.98 Z M 1169.03 114.231 H 1200.52 C 1208.32 114.231 1214.8 112.527 1219.97 109.121 C 1225.13 105.714 1228.98 100.989 1231.51 94.9451 C 1234.14 88.9011 1235.46 82.033 1235.46 74.3407 C 1235.46 66.0989 1234.31 58.956 1232 52.9121 C 1229.69 46.7582 1226.07 42.033 1221.12 38.7363 C 1216.18 35.3297 1209.64 33.6264 1201.51 33.6264 H 1169.03 V 114.231 Z"/>
+            </Canvas>
+        </Viewbox>
+
+        <!-- Update callout -->
+        <Border Grid.Row="1" x:Name="UpdateBanner" Visibility="Collapsed" Margin="12,0,12,12" Padding="12"
+                CornerRadius="4" Background="{DynamicResource CalloutBackground}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Path Data="{StaticResource IconInfo}" Width="16" Height="16" Margin="0,2,8,0" VerticalAlignment="Top"
+                      Fill="{DynamicResource CalloutAccent}"/>
+                <StackPanel Grid.Column="1">
+                    <TextBlock x:Name="UpdateMessage" TextWrapping="Wrap"/>
+                    <WrapPanel Margin="0,8,0,0">
                         <Button x:Name="UpdatePrimaryButton" Content="Install after Revit closes"
-                                Click="UpdatePrimaryButton_Click" Width="Auto" Margin="0"/>
+                                Style="{StaticResource PrimaryButton}" Margin="0,0,4,4"
+                                Click="UpdatePrimaryButton_Click"/>
                         <Button x:Name="ReleaseNotesButton" Content="Release notes"
-                                Click="ReleaseNotesButton_Click" Width="Auto"/>
+                                Style="{StaticResource MinimalButton}" Margin="0,0,4,4"
+                                Click="ReleaseNotesButton_Click"/>
                         <Button x:Name="UpdateLaterButton" Content="Later"
-                                Click="UpdateLaterButton_Click" Width="Auto"/>
-                    </StackPanel>
+                                Style="{StaticResource MinimalButton}" Margin="0,0,4,4"
+                                Click="UpdateLaterButton_Click"/>
+                    </WrapPanel>
                 </StackPanel>
-            </Border>
+            </Grid>
+        </Border>
 
-            <!-- Login section -->
-            <StackPanel Grid.Row="1" Margin="10,10,10,0">
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="API key" Grid.Column="0" VerticalAlignment="Center"/>
-                    <Border Grid.Column="1" Width="1" Background="#FF485263" Margin="5,0"/>
-                    <PasswordBox Grid.Column="2" x:Name="ApiKeyBox"/>
-                </Grid>
-                <Border Height="1" Background="#FF485263" Margin="0,0,0,2"/>
-                <Button Content="Login" Click="LoginButton_Click" x:Name="LoginButton" Margin="0" Width="NaN" HorizontalAlignment="Stretch"/>
+        <!-- Account -->
+        <Border Grid.Row="2" Style="{StaticResource Section}" Margin="12,0,12,12">
+            <StackPanel>
+                <Border Style="{StaticResource SectionHeader}">
+                    <Grid>
+                        <TextBlock Text="Account" Style="{StaticResource SectionTitle}"/>
+                        <Border x:Name="ConnectedTag" Style="{StaticResource SuccessTag}" HorizontalAlignment="Right"
+                                Visibility="Collapsed">
+                            <TextBlock Text="Connected" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
+                <StackPanel Margin="16">
+                    <TextBlock Text="API key" Style="{StaticResource FieldLabel}"/>
+                    <Grid>
+                        <PasswordBox x:Name="ApiKeyBox" PasswordChanged="ApiKeyBox_PasswordChanged"/>
+                        <TextBlock x:Name="ApiKeyPlaceholder" Text="Paste your HVAKR API key" Margin="8,0"
+                                   VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource MutedTextBrush}"/>
+                    </Grid>
+                    <Button x:Name="LoginButton" Content="Log in" Tag="{StaticResource IconLogIn}"
+                            Style="{StaticResource PrimaryButton}" Margin="0,12,0,0"
+                            Click="LoginButton_Click"/>
+                </StackPanel>
             </StackPanel>
+        </Border>
 
-            <Border Grid.Row="2" Height="1" Background="#FF485263" Margin="10,10,10,10"/>
+        <!-- Project — disabled until login -->
+        <Border Grid.Row="3" x:Name="DetailsPanel" IsEnabled="False" Style="{StaticResource Section}" Margin="12,0,12,12">
+            <StackPanel>
+                <Border Style="{StaticResource SectionHeader}">
+                    <TextBlock Text="Project" Style="{StaticResource SectionTitle}"/>
+                </Border>
+                <StackPanel Margin="16">
+                    <TextBlock Text="HVAKR project" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox x:Name="ProjectPicker" SelectionChanged="ProjectPicker_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
 
-            <!-- Project details — disabled until login -->
-            <StackPanel Grid.Row="3" Margin="10,0,10,0" IsEnabled="False" x:Name="DetailsPanel">
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Project" Grid.Column="0" VerticalAlignment="Center"/>
-                    <Border Grid.Column="1" Width="1" Background="#FF485263" Margin="5,0"/>
-                    <ComboBox Grid.Column="2" x:Name="ProjectPicker"
-                              Style="{StaticResource DarkComboBoxStyle}"
-                              IsEditable="False"
-                              SelectionChanged="ProjectPicker_SelectionChanged"
-                              DisplayMemberPath="Name"/>
-                </Grid>
+                    <TextBlock Text="Address" Style="{StaticResource FieldLabel}" Margin="0,12,0,4"/>
+                    <TextBlock x:Name="AddressLabel" TextWrapping="Wrap" Foreground="{DynamicResource MutedTextBrush}"/>
 
-                <Border Height="1" Background="#FF485263" Margin="0,0,0,2"/>
-
-                <Grid Margin="0,0,0,2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Address" Grid.Column="0" VerticalAlignment="Center"/>
-                    <Border Grid.Column="1" Width="1" Background="#FF485263" Margin="5,0"/>
-                    <TextBlock Grid.Column="2" Text="" VerticalAlignment="Center" Padding="2" x:Name="AddressLabel"/>
-                </Grid>
-
-                <Border Height="1" Background="#FF485263" Margin="0,0,0,2"/>
-
-                <Button Content="Export to Selected Project"
-                        Click="ExportButton_Click"
-                        x:Name="ExportButton"
-                        Margin="0" Width="NaN" HorizontalAlignment="Stretch"/>
-
-                <Border Height="1" Background="#FF485263" Margin="0,10,0,10"/>
-
-                <Button Content="Create New HVAKR Project"
-                        Click="CreateProjectButton_Click"
-                        x:Name="CreateProjectButton"
-                        Margin="0" Width="NaN" HorizontalAlignment="Stretch"/>
+                    <Button x:Name="ExportButton" Content="Export to selected project" Tag="{StaticResource IconExport}"
+                            Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"
+                            Click="ExportButton_Click"/>
+                    <Button x:Name="CreateProjectButton" Content="Create new HVAKR project" Tag="{StaticResource IconPlus}"
+                            Margin="0,8,0,0"
+                            Click="CreateProjectButton_Click"/>
+                </StackPanel>
             </StackPanel>
+        </Border>
 
-            <Button Grid.Row="4" Content="Check for updates"
-                    Click="CheckForUpdatesButton_Click"
-                    x:Name="CheckForUpdatesButton"
-                    Margin="10" Width="NaN" HorizontalAlignment="Stretch"/>
-        </Grid>
-    </Border>
+        <!-- Footer -->
+        <Border Grid.Row="5" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="12,8">
+            <Grid>
+                <TextBlock x:Name="VersionText" VerticalAlignment="Center" Margin="4,0,0,0"
+                           FontFamily="{StaticResource MonoFont}" FontSize="12"
+                           Foreground="{DynamicResource MutedTextBrush}"/>
+                <Button x:Name="CheckForUpdatesButton" Content="Check for updates" Tag="{StaticResource IconRefresh}"
+                        Style="{StaticResource MinimalButton}" HorizontalAlignment="Right"
+                        Click="CheckForUpdatesButton_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
 </UserControl>

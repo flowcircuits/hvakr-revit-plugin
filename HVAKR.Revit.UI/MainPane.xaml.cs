@@ -29,6 +29,7 @@ public partial class MainPane : UserControl
     private MainPane(IExportBridge? exportBridge)
     {
         InitializeComponent();
+        VersionText.Text = $"v{_updateService.CurrentVersion}";
         _exportBridge = exportBridge;
         _canInstallUpdates = exportBridge is not null;
         UpdateLoggedInState();
@@ -36,6 +37,12 @@ public partial class MainPane : UserControl
     }
 
     public static MainPane CreateForHarness() => new(exportBridge: null);
+
+    public void ApplyTheme(bool dark) =>
+        Resources.MergedDictionaries[0] = new ResourceDictionary
+        {
+            Source = new Uri($"/HVAKR.Revit.UI;component/Themes/{(dark ? "Dark" : "Light")}.xaml", UriKind.Relative),
+        };
 
     private async void MainPane_Loaded(object sender, RoutedEventArgs e)
     {
@@ -57,16 +64,20 @@ public partial class MainPane : UserControl
 
     private void UpdateLoggedInState()
     {
+        LoginButton.Style = (Style)FindResource(_isLoggedIn ? "DefaultButton" : "PrimaryButton");
+        LoginButton.Tag = FindResource(_isLoggedIn ? "IconLogOut" : "IconLogIn");
+        ConnectedTag.Visibility = _isLoggedIn ? Visibility.Visible : Visibility.Collapsed;
+
         if (_isLoggedIn)
         {
-            LoginButton.Content = "Logout";
+            LoginButton.Content = "Log out";
             LoginButton.IsEnabled = true;
             ApiKeyBox.IsEnabled = false;
             DetailsPanel.IsEnabled = true;
         }
         else
         {
-            LoginButton.Content = "Login";
+            LoginButton.Content = "Log in";
             LoginButton.IsEnabled = true;
             ApiKeyBox.IsEnabled = true;
             ApiKeyBox.Password = string.Empty;
@@ -92,7 +103,7 @@ public partial class MainPane : UserControl
         }
 
         LoginButton.IsEnabled = false;
-        LoginButton.Content = "Loading…";
+        LoginButton.Content = "Logging in…";
 
         try
         {
@@ -136,6 +147,9 @@ public partial class MainPane : UserControl
         _httpClient = null;
         UpdateLoggedInState();
     }
+
+    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e) =>
+        ApiKeyPlaceholder.Visibility = ApiKeyBox.Password.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     private void ProjectPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {

@@ -5,6 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:HVAKR.Revit.UI.Harness"
         mc:Ignorable="d"
-        Title="HVAKR Pane — Dev Harness" Height="600" Width="320">
-    <Grid x:Name="RootGrid" />
+        Title="HVAKR Pane — Dev Harness" Height="680" Width="320">
+    <DockPanel>
+        <CheckBox x:Name="DarkThemeToggle" DockPanel.Dock="Top" Content="Dark theme" Margin="8"
+                  Checked="DarkThemeToggle_Changed" Unchecked="DarkThemeToggle_Changed"/>
+        <Grid x:Name="RootGrid" />
+    </DockPanel>
 </Window>

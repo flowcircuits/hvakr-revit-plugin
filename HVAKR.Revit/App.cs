@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Windows.Media.Imaging;
 using Autodesk.Revit.UI;
 using HVAKR.Revit.UI;
 
@@ -25,12 +26,18 @@ public class App : IExternalApplication
             className: typeof(ToggleDockablePaneCommand).FullName)
         {
             ToolTip = "Show or hide the HVAKR dockable pane",
+            Image = new BitmapImage(new Uri("pack://application:,,,/HVAKR.Revit;component/Resources/HVAKR-16.png")),
+            LargeImage = new BitmapImage(new Uri("pack://application:,,,/HVAKR.Revit;component/Resources/HVAKR-32.png")),
         });
+
+        var pane = new MainPane();
+        pane.ApplyTheme(UIThemeManager.CurrentTheme == UITheme.Dark);
+        application.ThemeChanged += (_, _) => pane.ApplyTheme(UIThemeManager.CurrentTheme == UITheme.Dark);
 
         application.RegisterDockablePane(
             new DockablePaneId(DockablePaneGuid),
             "HVAKR",
-            new PaneProvider(new MainPane()));
+            new PaneProvider(pane));
 
         return Result.Succeeded;
     }
