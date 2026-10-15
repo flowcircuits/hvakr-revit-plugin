@@ -12,32 +12,42 @@
              Background="#FF3B4453">
 
     <UserControl.Resources>
-        <Style TargetType="TextBox">
-            <Setter Property="BorderBrush" Value="Transparent"/>
+        <ControlTemplate x:Key="DarkInputTemplate" TargetType="Control">
+            <Border Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    SnapsToDevicePixels="True">
+                <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+            </Border>
+        </ControlTemplate>
+
+        <Style x:Key="DarkInputStyle" TargetType="Control">
+            <Setter Property="BorderBrush" Value="#FF485263"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Background" Value="#FF3B4453"/>
             <Setter Property="Foreground" Value="#FFF5F5F5"/>
+            <Setter Property="Padding" Value="2"/>
             <Setter Property="MinWidth" Value="110"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template" Value="{StaticResource DarkInputTemplate}"/>
             <Style.Triggers>
                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF485263"/>
+                    <Setter Property="BorderBrush" Value="#FF5B87B2"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.56"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
-        <Style TargetType="PasswordBox">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="#FF3B4453"/>
-            <Setter Property="Foreground" Value="#FFF5F5F5"/>
-            <Setter Property="MinWidth" Value="110"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Style.Triggers>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF485263"/>
-                </Trigger>
-            </Style.Triggers>
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkInputStyle}">
+            <Setter Property="CaretBrush" Value="#FFF5F5F5"/>
+        </Style>
+
+        <Style TargetType="PasswordBox" BasedOn="{StaticResource DarkInputStyle}">
+            <Setter Property="CaretBrush" Value="#FFF5F5F5"/>
         </Style>
 
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
