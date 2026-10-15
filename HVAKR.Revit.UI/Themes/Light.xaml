@@ -1,0 +1,31 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="PaneBackground" Color="#F6F7F9"/>
+    <SolidColorBrush x:Key="SectionBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#26111418"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#1C2127"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#5F6B7C"/>
+    <SolidColorBrush x:Key="DisabledTextBrush" Color="#995F6B7C"/>
+
+    <SolidColorBrush x:Key="ButtonBackground" Color="#F6F7F9"/>
+    <SolidColorBrush x:Key="ButtonHoverBackground" Color="#EDEFF2"/>
+    <SolidColorBrush x:Key="ButtonPressedBackground" Color="#DCE0E5"/>
+    <SolidColorBrush x:Key="ButtonBorder" Color="#33111418"/>
+    <SolidColorBrush x:Key="ButtonDisabledBackground" Color="#80D3D8DE"/>
+    <SolidColorBrush x:Key="MinimalHoverBackground" Color="#268F99A8"/>
+    <SolidColorBrush x:Key="MinimalPressedBackground" Color="#4D8F99A8"/>
+
+    <SolidColorBrush x:Key="InputBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="InputBorder" Color="#33111418"/>
+    <SolidColorBrush x:Key="InputDisabledBackground" Color="#80D3D8DE"/>
+
+    <SolidColorBrush x:Key="MenuBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SelectedItemBackground" Color="#FFEFEB"/>
+    <SolidColorBrush x:Key="SelectedItemText" Color="#FD491A"/>
+
+    <SolidColorBrush x:Key="CalloutBackground" Color="#FFEFEB"/>
+    <SolidColorBrush x:Key="CalloutAccent" Color="#FD491A"/>
+    <SolidColorBrush x:Key="SuccessTagBackground" Color="#1A238551"/>
+    <SolidColorBrush x:Key="SuccessTagText" Color="#1C6E42"/>
+    <Color x:Key="ShadowColor">#111418</Color>
+</ResourceDictionary>
