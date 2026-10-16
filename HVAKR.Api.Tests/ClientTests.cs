@@ -29,6 +29,21 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task GetMeAsync_returns_the_token_owner()
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey))
+            return; // env var not set; skip silently
+
+        using var http = new HttpClient();
+        var client = new Client(http, ApiKey);
+
+        var me = await client.GetMeAsync();
+
+        Assert.False(string.IsNullOrWhiteSpace(me.Id));
+        Assert.False(string.IsNullOrWhiteSpace(me.Email));
+    }
+
+    [Fact]
     public async Task GetProjectDetailsAsync_returns_expected_project()
     {
         if (string.IsNullOrWhiteSpace(ApiKey) || string.IsNullOrWhiteSpace(KnownProjectId))
