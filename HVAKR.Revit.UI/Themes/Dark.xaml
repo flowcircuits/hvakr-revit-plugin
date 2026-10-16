@@ -27,5 +27,8 @@
     <SolidColorBrush x:Key="CalloutAccent" Color="#FFEFEB"/>
     <SolidColorBrush x:Key="SuccessTagBackground" Color="#33238551"/>
     <SolidColorBrush x:Key="SuccessTagText" Color="#72CA9B"/>
+    <SolidColorBrush x:Key="DangerTextBrush" Color="#FA999C"/>
+    <SolidColorBrush x:Key="TooltipBackground" Color="#E5E8EB"/>
+    <SolidColorBrush x:Key="TooltipText" Color="#1C2127"/>
     <Color x:Key="ShadowColor">#000000</Color>
 </ResourceDictionary>

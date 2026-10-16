@@ -129,6 +129,23 @@ public class ClientTests
             });
     }
 
+    [Fact]
+    public async Task GetMeAsync_reads_the_user_from_the_me_response()
+    {
+        var handler = new StubHttpMessageHandler(
+            """{"user":{"id":"user-a","email":"a@example.com","firstName":"Ada","lastName":"Lovelace"},"organizations":[]}""");
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "test-token");
+
+        var me = await client.GetMeAsync();
+
+        Assert.Equal("/v0/me", handler.Requests.Single().RequestUri!.AbsolutePath);
+        Assert.Equal("user-a", me.Id);
+        Assert.Equal("a@example.com", me.Email);
+        Assert.Equal("Ada", me.FirstName);
+        Assert.Equal("Lovelace", me.LastName);
+    }
+
     private sealed class StubHttpMessageHandler(params string[] responseBodies) : HttpMessageHandler
     {
         private readonly Queue<string> _responseBodies = new(responseBodies);
