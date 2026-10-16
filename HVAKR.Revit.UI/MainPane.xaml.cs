@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using HVAKR.Api;
 using HVAKR.Api.Models;
 using HVAKR.Api.Updates;
@@ -64,78 +66,116 @@ public partial class MainPane : UserControl
 
     private void UpdateLoggedInState()
     {
-        LoginButton.Style = (Style)FindResource(_isLoggedIn ? "DefaultButton" : "PrimaryButton");
-        LoginButton.Tag = FindResource(_isLoggedIn ? "IconLogOut" : "IconLogIn");
-        ConnectedTag.Visibility = _isLoggedIn ? Visibility.Visible : Visibility.Collapsed;
+        LoginView.Visibility = _isLoggedIn ? Visibility.Collapsed : Visibility.Visible;
+        MainView.Visibility = _isLoggedIn ? Visibility.Visible : Visibility.Collapsed;
+        HeaderLogo.Visibility = _isLoggedIn ? Visibility.Visible : Visibility.Collapsed;
+        AccountButton.Visibility = _isLoggedIn ? Visibility.Visible : Visibility.Collapsed;
+        UpdateBanner.Margin = _isLoggedIn ? new Thickness(12, 0, 12, 12) : new Thickness(12);
 
-        if (_isLoggedIn)
+        if (!_isLoggedIn)
         {
-            LoginButton.Content = "Log out";
-            LoginButton.IsEnabled = true;
-            ApiKeyBox.IsEnabled = false;
-            DetailsPanel.IsEnabled = true;
-        }
-        else
-        {
-            LoginButton.Content = "Log in";
-            LoginButton.IsEnabled = true;
-            ApiKeyBox.IsEnabled = true;
-            ApiKeyBox.Password = string.Empty;
             ProjectPicker.ItemsSource = null;
             AddressLabel.Text = string.Empty;
-            DetailsPanel.IsEnabled = false;
+            AccountMenu.IsOpen = false;
+            ApiKeyBox.Password = string.Empty;
         }
     }
 
     private async void LoginButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isLoggedIn)
+        var apiKey = ApiKeyBox.Password.Trim();
+        if (apiKey.Length == 0)
         {
-            Logout();
+            ShowLoginError("Enter your HVAKR API key.");
             return;
         }
 
-        var apiKey = ApiKeyBox.Password;
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            MessageBox.Show("Please enter an API key.", "Login", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
+        LoginError.Visibility = Visibility.Collapsed;
         LoginButton.IsEnabled = false;
         LoginButton.Content = "Logging in…";
-
         try
         {
-            _httpClient = new HttpClient();
-            _apiClient = new Client(_httpClient, apiKey);
-
-            var projects = await _apiClient.GetProjectsAsync();
-            if (projects.Count == 0)
-            {
-                MessageBox.Show("No projects found for this account.", "HVAKR", MessageBoxButton.OK, MessageBoxImage.Warning);
-                Logout();
-                return;
-            }
-
-            _projectsById = projects.ToDictionary(project => project.Id);
-            var items = projects
-                .Select(p => new ProjectListItem(p.Id, p.Name ?? p.Number ?? p.Id))
-                .ToList();
-
-            ProjectPicker.ItemsSource = items;
-            ProjectPicker.SelectedIndex = 0;
-
-            _isLoggedIn = true;
-            UpdateLoggedInState();
+            await LoginAsync(apiKey);
         }
         catch (Exception ex)
         {
             Logger.LogError("Login failed", ex);
-            MessageBox.Show($"Login failed: {ex.Message}", "HVAKR", MessageBoxButton.OK, MessageBoxImage.Error);
             Logout();
+            ShowLoginError(ex is HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden }
+                ? "That API key isn't valid."
+                : "Couldn't log in. Check your connection and try again.");
+        }
+        finally
+        {
+            LoginButton.IsEnabled = true;
+            LoginButton.Content = "Log in";
         }
     }
+
+    private async Task LoginAsync(string apiKey)
+    {
+        _httpClient = new HttpClient();
+        _apiClient = new Client(_httpClient, apiKey);
+
+        var meTask = _apiClient.GetMeAsync();
+        var projectsTask = _apiClient.GetProjectsAsync();
+        await Task.WhenAll(meTask, projectsTask);
+        var me = meTask.Result;
+        var projects = projectsTask.Result;
+        if (projects.Count == 0)
+        {
+            Logout();
+            ShowLoginError("No projects found for this account.");
+            return;
+        }
+
+        var name = $"{me.FirstName} {me.LastName}".Trim();
+        AccountName.Text = name.Length > 0 ? name : me.Email ?? string.Empty;
+        AccountEmail.Text = me.Email ?? string.Empty;
+        AvatarInitials.Text = GetInitials(me);
+        AccountButton.ToolTip = AccountName.Text;
+
+        _projectsById = projects.ToDictionary(project => project.Id);
+        ProjectPicker.ItemsSource = projects
+            .Select(p => new ProjectListItem(p.Id, p.Name ?? p.Number ?? p.Id))
+            .ToList();
+        ProjectPicker.SelectedIndex = 0;
+
+        _isLoggedIn = true;
+        UpdateLoggedInState();
+    }
+
+    private void ShowLoginError(string message)
+    {
+        LoginError.Text = message;
+        LoginError.Visibility = Visibility.Visible;
+    }
+
+    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        ApiKeyPlaceholder.Visibility = ApiKeyBox.Password.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        LoginError.Visibility = Visibility.Collapsed;
+    }
+
+    private void ApiKeyBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || !LoginButton.IsEnabled) return;
+        e.Handled = true;
+        LoginButton_Click(LoginButton, e);
+    }
+
+    private static string GetInitials(MeUser me)
+    {
+        var initials = string.Concat(new[] { me.FirstName, me.LastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Select(part => char.ToUpperInvariant(part!.Trim()[0])));
+        if (initials.Length > 0) return initials;
+        return string.IsNullOrEmpty(me.Email) ? "?" : char.ToUpperInvariant(me.Email[0]).ToString();
+    }
+
+    private void AccountButton_Click(object sender, RoutedEventArgs e) => AccountMenu.IsOpen = !AccountMenu.IsOpen;
+
+    private void LogoutButton_Click(object sender, RoutedEventArgs e) => Logout();
 
     private void Logout()
     {
@@ -147,9 +187,6 @@ public partial class MainPane : UserControl
         _httpClient = null;
         UpdateLoggedInState();
     }
-
-    private void ApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e) =>
-        ApiKeyPlaceholder.Visibility = ApiKeyBox.Password.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
 
     private void ProjectPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -258,7 +295,7 @@ public partial class MainPane : UserControl
     private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
     {
         CheckForUpdatesButton.IsEnabled = false;
-        CheckForUpdatesButton.Content = "Checking…";
+        CheckForUpdatesButton.ToolTip = "Checking for updates…";
         try
         {
             var result = await _updateService.CheckAsync(force: true);
@@ -277,7 +314,7 @@ public partial class MainPane : UserControl
         }
         finally
         {
-            CheckForUpdatesButton.Content = "Check for updates";
+            CheckForUpdatesButton.ToolTip = "Check for updates";
             CheckForUpdatesButton.IsEnabled = true;
         }
     }

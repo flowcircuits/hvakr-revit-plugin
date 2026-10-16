@@ -101,6 +101,9 @@
                     <Trigger Property="Tag" Value="{x:Null}">
                         <Setter TargetName="Icon" Property="Visibility" Value="Collapsed"/>
                     </Trigger>
+                    <Trigger Property="Content" Value="{x:Null}">
+                        <Setter TargetName="Icon" Property="Margin" Value="0"/>
+                    </Trigger>
                 </ControlTemplate.Triggers>
             </ControlTemplate>
 
@@ -170,6 +173,31 @@
                         <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+
+            <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource MinimalButton}">
+                <Setter Property="MinWidth" Value="32"/>
+                <Setter Property="Padding" Value="4"/>
+            </Style>
+
+            <Style TargetType="ToolTip">
+                <Setter Property="FontFamily" Value="{StaticResource SansFont}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{DynamicResource TooltipText}"/>
+                <Setter Property="HasDropShadow" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToolTip">
+                            <Border Margin="8,0,8,12" Padding="8,4" CornerRadius="4" Background="{DynamicResource TooltipBackground}">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.2"
+                                                      Color="{DynamicResource ShadowColor}"/>
+                                </Border.Effect>
+                                <ContentPresenter/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- Inputs own their template: the default Aero2 template ignores border and focus colors. -->
@@ -362,34 +390,39 @@
                 <Setter Property="TextElement.FontSize" Value="12"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessTagText}"/>
             </Style>
+            <!-- Overlay the scrollbar in the right gutter so cards keep symmetric margins when it appears -->
+            <Style x:Key="PaneScrollViewer" TargetType="ScrollViewer">
+                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollViewer">
+                            <Grid>
+                                <ScrollContentPresenter/>
+                                <ScrollBar x:Name="PART_VerticalScrollBar" Style="{StaticResource MenuScrollBar}"
+                                           HorizontalAlignment="Right" Margin="0,2,2,2"
+                                           Maximum="{TemplateBinding ScrollableHeight}"
+                                           ViewportSize="{TemplateBinding ViewportHeight}"
+                                           Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                           Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Overlay the scrollbar in the right gutter so cards keep symmetric margins when it appears -->
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ScrollViewer.Template>
-                <ControlTemplate TargetType="ScrollViewer">
-                    <Grid>
-                        <ScrollContentPresenter/>
-                        <ScrollBar x:Name="PART_VerticalScrollBar" Style="{StaticResource MenuScrollBar}"
-                                   HorizontalAlignment="Right" Margin="0,2,2,2"
-                                   Maximum="{TemplateBinding ScrollableHeight}"
-                                   ViewportSize="{TemplateBinding ViewportHeight}"
-                                   Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
-                    </Grid>
-                </ControlTemplate>
-            </ScrollViewer.Template>
-            <StackPanel>
-                <!-- HVAKR logo (hvakr.com/HVAKRLogo.svg); the wordmark follows the theme text color -->
-                <Viewbox Height="16" Margin="16" HorizontalAlignment="Left">
-                    <Canvas Width="1284" Height="240">
+        <StackPanel>
+            <Viewbox x:Name="HeaderLogo" Height="16" Margin="16" HorizontalAlignment="Left">
+                <Canvas Width="1284" Height="240">
                         <Ellipse Width="240" Height="240">
                             <Ellipse.Fill>
                                 <RadialGradientBrush>
@@ -402,9 +435,9 @@
                         <Path Fill="White" Data="M 104.81 82.7716 C 100.58 86.3216 100.028 92.6292 103.578 96.8599 C 107.128 101.091 113.435 101.642 117.666 98.0925 L 157.5 64.6675 C 161.731 61.1175 162.283 54.8099 158.733 50.5792 C 155.183 46.3484 148.875 45.7966 144.645 49.3466 L 104.81 82.7716 Z M 96 120 C 96 131.046 87.0457 140 76 140 C 64.9543 140 56 131.046 56 120 C 56 108.955 64.9543 100 76 100 C 87.0457 100 96 108.955 96 120 Z M 103.578 143.141 C 107.128 138.91 113.435 138.358 117.666 141.908 L 157.5 175.333 C 161.731 178.883 162.283 185.191 158.733 189.422 C 155.183 193.652 148.875 194.204 144.644 190.654 L 104.81 157.229 C 100.579 153.679 100.028 147.372 103.578 143.141 Z M 122 110 C 116.477 110 112 114.478 112 120 C 112 125.523 116.477 130 122 130 H 174.002 C 179.525 130 184.002 125.523 184.002 120 C 184.002 114.478 179.525 110 174.002 110 H 122 Z"/>
                         <Path Fill="{DynamicResource TextBrush}" Data="M 272 0 V 240 H 312.055 V 133.516 H 395.132 V 240 H 435.022 V 0 H 395.132 V 99.8901 H 312.055 V 0 H 272 Z M 484.143 0 H 527.33 L 575.1 183.4 L 623.099 0 H 666.451 L 594.747 240 H 555.846 L 484.143 0 Z M 685.407 240 H 727.275 L 743 184.451 H 816 L 831.615 240 H 873.648 L 797.165 0 H 761.56 L 685.407 240 Z M 752.3 150.9 H 806.6 L 779.4 54 L 752.3 150.9 Z M 922.11 0 V 240 H 962.164 V 165 L 983.7 138.5 L 1037.99 240 H 1085.3 L 1009.1 105.7 L 1082 0 H 1033.54 L 962.164 109.8 V 0 H 922.11 Z M 1128.98 240 V 0 H 1201.51 C 1217.33 0 1230.74 2.74725 1241.73 8.24176 C 1252.71 13.7363 1261.07 21.8681 1266.78 32.6374 C 1272.61 43.2967 1275.52 56.5385 1275.52 72.3626 C 1275.52 84.3407 1273.7 94.8901 1270.08 104.011 C 1266.56 113.132 1261.45 120.824 1254.75 127.088 C 1248.04 133.242 1245.6 134.293 1239.3 137.7 L 1284 240 H 1240.74 L 1201.6 147.857 H 1169.03 V 240 H 1128.98 Z M 1169.03 114.231 H 1200.52 C 1208.32 114.231 1214.8 112.527 1219.97 109.121 C 1225.13 105.714 1228.98 100.989 1231.51 94.9451 C 1234.14 88.9011 1235.46 82.033 1235.46 74.3407 C 1235.46 66.0989 1234.31 58.956 1232 52.9121 C 1229.69 46.7582 1226.07 42.033 1221.12 38.7363 C 1216.18 35.3297 1209.64 33.6264 1201.51 33.6264 H 1169.03 V 114.231 Z"/>
                     </Canvas>
-                </Viewbox>
+            </Viewbox>
 
-                <!-- Update callout -->
+            <!-- Update callout -->
                 <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="12,0,12,12" Padding="12"
                         CornerRadius="4" Background="{DynamicResource CalloutBackground}">
                     <Grid>
@@ -430,36 +463,49 @@
                         </StackPanel>
                     </Grid>
                 </Border>
+        </StackPanel>
 
-                <!-- Account -->
-                <Border Style="{StaticResource Section}" Margin="12,0,12,12">
-                    <StackPanel>
-                        <Border Style="{StaticResource SectionHeader}">
-                            <Grid>
-                                <TextBlock Text="Account" Style="{StaticResource SectionTitle}"/>
-                                <Border x:Name="ConnectedTag" Style="{StaticResource SuccessTag}" HorizontalAlignment="Right"
-                                        Visibility="Collapsed">
-                                    <TextBlock Text="Connected" VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                        </Border>
-                        <StackPanel Margin="16">
-                            <TextBlock Text="API key" Style="{StaticResource FieldLabel}"/>
-                            <Grid>
-                                <PasswordBox x:Name="ApiKeyBox" PasswordChanged="ApiKeyBox_PasswordChanged"/>
-                                <TextBlock x:Name="ApiKeyPlaceholder" Text="Paste your HVAKR API key" Margin="8,0"
-                                           VerticalAlignment="Center" IsHitTestVisible="False"
-                                           Foreground="{DynamicResource MutedTextBrush}"/>
-                            </Grid>
-                            <Button x:Name="LoginButton" Content="Log in" Tag="{StaticResource IconLogIn}"
-                                    Style="{StaticResource PrimaryButton}" Margin="0,12,0,0"
-                                    Click="LoginButton_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+        <!-- Logged out: the pane only offers login -->
+        <ScrollViewer x:Name="LoginView" Grid.Row="1" Style="{StaticResource PaneScrollViewer}">
+            <StackPanel VerticalAlignment="Center" Margin="24,0,24,48">
+                <Viewbox Height="24" HorizontalAlignment="Center" Margin="0,0,0,24">
+                    <Canvas Width="1284" Height="240">
+                            <Ellipse Width="240" Height="240">
+                                <Ellipse.Fill>
+                                    <RadialGradientBrush>
+                                        <GradientStop Color="#FD491A" Offset="0"/>
+                                        <GradientStop Color="#FD3602" Offset="0.83"/>
+                                        <GradientStop Color="#E43102" Offset="0.925"/>
+                                    </RadialGradientBrush>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <Path Fill="White" Data="M 104.81 82.7716 C 100.58 86.3216 100.028 92.6292 103.578 96.8599 C 107.128 101.091 113.435 101.642 117.666 98.0925 L 157.5 64.6675 C 161.731 61.1175 162.283 54.8099 158.733 50.5792 C 155.183 46.3484 148.875 45.7966 144.645 49.3466 L 104.81 82.7716 Z M 96 120 C 96 131.046 87.0457 140 76 140 C 64.9543 140 56 131.046 56 120 C 56 108.955 64.9543 100 76 100 C 87.0457 100 96 108.955 96 120 Z M 103.578 143.141 C 107.128 138.91 113.435 138.358 117.666 141.908 L 157.5 175.333 C 161.731 178.883 162.283 185.191 158.733 189.422 C 155.183 193.652 148.875 194.204 144.644 190.654 L 104.81 157.229 C 100.579 153.679 100.028 147.372 103.578 143.141 Z M 122 110 C 116.477 110 112 114.478 112 120 C 112 125.523 116.477 130 122 130 H 174.002 C 179.525 130 184.002 125.523 184.002 120 C 184.002 114.478 179.525 110 174.002 110 H 122 Z"/>
+                            <Path Fill="{DynamicResource TextBrush}" Data="M 272 0 V 240 H 312.055 V 133.516 H 395.132 V 240 H 435.022 V 0 H 395.132 V 99.8901 H 312.055 V 0 H 272 Z M 484.143 0 H 527.33 L 575.1 183.4 L 623.099 0 H 666.451 L 594.747 240 H 555.846 L 484.143 0 Z M 685.407 240 H 727.275 L 743 184.451 H 816 L 831.615 240 H 873.648 L 797.165 0 H 761.56 L 685.407 240 Z M 752.3 150.9 H 806.6 L 779.4 54 L 752.3 150.9 Z M 922.11 0 V 240 H 962.164 V 165 L 983.7 138.5 L 1037.99 240 H 1085.3 L 1009.1 105.7 L 1082 0 H 1033.54 L 962.164 109.8 V 0 H 922.11 Z M 1128.98 240 V 0 H 1201.51 C 1217.33 0 1230.74 2.74725 1241.73 8.24176 C 1252.71 13.7363 1261.07 21.8681 1266.78 32.6374 C 1272.61 43.2967 1275.52 56.5385 1275.52 72.3626 C 1275.52 84.3407 1273.7 94.8901 1270.08 104.011 C 1266.56 113.132 1261.45 120.824 1254.75 127.088 C 1248.04 133.242 1245.6 134.293 1239.3 137.7 L 1284 240 H 1240.74 L 1201.6 147.857 H 1169.03 V 240 H 1128.98 Z M 1169.03 114.231 H 1200.52 C 1208.32 114.231 1214.8 112.527 1219.97 109.121 C 1225.13 105.714 1228.98 100.989 1231.51 94.9451 C 1234.14 88.9011 1235.46 82.033 1235.46 74.3407 C 1235.46 66.0989 1234.31 58.956 1232 52.9121 C 1229.69 46.7582 1226.07 42.033 1221.12 38.7363 C 1216.18 35.3297 1209.64 33.6264 1201.51 33.6264 H 1169.03 V 114.231 Z"/>
+                        </Canvas>
+                </Viewbox>
+                <TextBlock Text="Log in to sync your Revit model's spaces with HVAKR." TextWrapping="Wrap" TextAlignment="Center"
+                           Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,24"/>
+                <Grid>
+                    <PasswordBox x:Name="ApiKeyBox" AutomationProperties.Name="API key"
+                                 PasswordChanged="ApiKeyBox_PasswordChanged" KeyDown="ApiKeyBox_KeyDown"/>
+                    <TextBlock x:Name="ApiKeyPlaceholder" Text="Paste your HVAKR API key" Margin="8,0"
+                               VerticalAlignment="Center" IsHitTestVisible="False"
+                               Foreground="{DynamicResource MutedTextBrush}"/>
+                </Grid>
+                <Button x:Name="LoginButton" Content="Log in" Tag="{StaticResource IconLogIn}"
+                        Style="{StaticResource PrimaryButton}" Margin="0,12,0,0" Click="LoginButton_Click"/>
+                <TextBlock x:Name="LoginError" TextWrapping="Wrap" TextAlignment="Center" Margin="0,12,0,0" Visibility="Collapsed"
+                           Foreground="{DynamicResource DangerTextBrush}"/>
+                <TextBlock Text="Create an API key in HVAKR under Settings → Developer." FontSize="12" TextWrapping="Wrap"
+                           TextAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" Margin="0,12,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
 
-                <!-- Project — disabled until login -->
-                <Border x:Name="DetailsPanel" IsEnabled="False" Style="{StaticResource Section}" Margin="12,0,12,12">
+        <!-- Logged in -->
+        <ScrollViewer x:Name="MainView" Grid.Row="1" Style="{StaticResource PaneScrollViewer}">
+            <StackPanel>
+                <!-- Project -->
+                <Border x:Name="DetailsPanel" Style="{StaticResource Section}" Margin="12,0,12,12">
                     <StackPanel>
                         <Border Style="{StaticResource SectionHeader}">
                             <TextBlock Text="Project" Style="{StaticResource SectionTitle}"/>
@@ -490,13 +536,47 @@
         </ScrollViewer>
 
         <!-- Footer -->
-        <Border Grid.Row="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="12,8">
+        <Border Grid.Row="2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0" Padding="8">
             <Grid>
-                <TextBlock x:Name="VersionText" VerticalAlignment="Center" Margin="4,0,0,0"
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="AccountButton" Style="{StaticResource IconButton}" Click="AccountButton_Click">
+                    <Border Width="24" Height="24" CornerRadius="12" Background="{StaticResource OrangeBrush}">
+                        <TextBlock x:Name="AvatarInitials" Foreground="White" FontSize="11" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Button>
+                <Popup x:Name="AccountMenu" PlacementTarget="{Binding ElementName=AccountButton}" Placement="Top"
+                       VerticalOffset="-4" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                    <Border Margin="8,0,8,12" Padding="4" Width="240" Background="{DynamicResource MenuBackground}"
+                            BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4"
+                            TextElement.FontFamily="{StaticResource SansFont}" TextElement.FontSize="14"
+                            TextElement.Foreground="{DynamicResource TextBrush}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.2"
+                                              Color="{DynamicResource ShadowColor}"/>
+                        </Border.Effect>
+                        <StackPanel>
+                            <StackPanel Margin="8,6,8,8">
+                                <TextBlock x:Name="AccountName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock x:Name="AccountEmail" FontSize="12" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource MutedTextBrush}"/>
+                            </StackPanel>
+                            <Border Height="1" Margin="-4,0,-4,4" Background="{DynamicResource DividerBrush}"/>
+                            <Button x:Name="LogoutButton" Content="Log out" Tag="{StaticResource IconLogOut}"
+                                    Style="{StaticResource MinimalButton}" HorizontalContentAlignment="Left"
+                                    Click="LogoutButton_Click"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+                <TextBlock x:Name="VersionText" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
                            FontFamily="{StaticResource MonoFont}" FontSize="12"
                            Foreground="{DynamicResource MutedTextBrush}"/>
-                <Button x:Name="CheckForUpdatesButton" Content="Check for updates" Tag="{StaticResource IconRefresh}"
-                        Style="{StaticResource MinimalButton}" HorizontalAlignment="Right"
+                <Button x:Name="CheckForUpdatesButton" Grid.Column="2" Tag="{StaticResource IconRefresh}"
+                        Style="{StaticResource IconButton}" ToolTip="Check for updates" ToolTipService.ShowOnDisabled="True"
                         Click="CheckForUpdatesButton_Click"/>
             </Grid>
         </Border>

@@ -29,6 +29,21 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task GetMeAsync_returns_the_token_owner()
+    {
+        if (string.IsNullOrWhiteSpace(ApiKey))
+            return; // env var not set; skip silently
+
+        using var http = new HttpClient();
+        var client = new Client(http, ApiKey);
+
+        var me = await client.GetMeAsync();
+
+        Assert.False(string.IsNullOrWhiteSpace(me.Id));
+        Assert.False(string.IsNullOrWhiteSpace(me.Email));
+    }
+
+    [Fact]
     public async Task GetProjectDetailsAsync_returns_expected_project()
     {
         if (string.IsNullOrWhiteSpace(ApiKey) || string.IsNullOrWhiteSpace(KnownProjectId))
@@ -127,6 +142,23 @@ public class ClientTests
                 Assert.Equal(HttpMethod.Patch, request.Method);
                 Assert.Equal("https://api.hvakr.com/revit/v0/projects/project-a", request.RequestUri!.ToString());
             });
+    }
+
+    [Fact]
+    public async Task GetMeAsync_reads_the_user_from_the_me_response()
+    {
+        var handler = new StubHttpMessageHandler(
+            """{"user":{"id":"user-a","email":"a@example.com","firstName":"Ada","lastName":"Lovelace"},"organizations":[]}""");
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "test-token");
+
+        var me = await client.GetMeAsync();
+
+        Assert.Equal("/v0/me", handler.Requests.Single().RequestUri!.AbsolutePath);
+        Assert.Equal("user-a", me.Id);
+        Assert.Equal("a@example.com", me.Email);
+        Assert.Equal("Ada", me.FirstName);
+        Assert.Equal("Lovelace", me.LastName);
     }
 
     private sealed class StubHttpMessageHandler(params string[] responseBodies) : HttpMessageHandler

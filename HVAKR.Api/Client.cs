@@ -55,6 +55,14 @@ public sealed class Client(HttpClient httpClient, string apiKey)
         return projects;
     }
 
+    public async Task<MeUser> GetMeAsync()
+    {
+        using var response = await SendAsync(HttpMethod.Get, "/v0/me").ConfigureAwait(false);
+        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonConvert.DeserializeObject<MeResponse>(content)?.User
+            ?? throw new JsonSerializationException("The /me response was empty.");
+    }
+
     public async Task<ProjectDetails?> GetProjectDetailsAsync(string projectId, bool expand = false)
     {
         if (string.IsNullOrWhiteSpace(projectId))
@@ -111,7 +119,9 @@ public sealed class Client(HttpClient httpClient, string apiKey)
             var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var detail = string.IsNullOrWhiteSpace(body) ? response.ReasonPhrase : body.Trim();
             throw new HttpRequestException(
-                $"HVAKR API {method} {path} failed: {(int)response.StatusCode} {response.ReasonPhrase}. {detail}");
+                $"HVAKR API {method} {path} failed: {(int)response.StatusCode} {response.ReasonPhrase}. {detail}",
+                null,
+                response.StatusCode);
         }
     }
 }
