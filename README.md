@@ -136,6 +136,8 @@ Repository setup required before the first release:
 1. Run the explicit `InstallLocal` target after closing every Revit process, or install the CI artifact zip by hand.
 2. Launch Revit 2025 or 2026. The `HVAKR` tab should appear on the ribbon.
 3. Click **Show** to open the dockable pane. Paste an HVAKR API key to log in.
+4. Restart Revit. The pane logs in again with the saved key. **Log out** deletes the saved key.
+5. Export a model that has MEP spaces, then one that has only rooms or only linked models. The export dialog states how many spaces or rooms it sent, and from where.
 
 ## Conventions
 

@@ -69,6 +69,32 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task GetProjectsAsync_marks_archived_projects()
+    {
+        var handler = new StubHttpMessageHandler(
+            """{"projects":[{"id":"active","status":"inProgress"},{"id":"archived","status":"archived"},{"id":"no-status"}],"hasMore":false}""");
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "test-token");
+
+        var projects = await client.GetProjectsAsync();
+
+        Assert.Equal(new[] { "archived" }, projects.Where(project => project.IsArchived).Select(project => project.Id));
+    }
+
+    [Fact]
+    public async Task Failed_requests_carry_the_HTTP_status_code()
+    {
+        var handler = new StubHttpMessageHandler(System.Net.HttpStatusCode.Unauthorized, """{"message":"Invalid API key"}""");
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "expired-token");
+
+        var error = await Assert.ThrowsAsync<HttpRequestException>(client.GetProjectsAsync);
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, error.StatusCode);
+        Assert.Contains("Invalid API key", error.Message);
+    }
+
+    [Fact]
     public async Task GetProjectDetailsAsync_reads_modular_equipment_mode_metadata()
     {
         var handler = new StubHttpMessageHandler(
@@ -129,9 +155,15 @@ public class ClientTests
             });
     }
 
-    private sealed class StubHttpMessageHandler(params string[] responseBodies) : HttpMessageHandler
+    private sealed class StubHttpMessageHandler(System.Net.HttpStatusCode statusCode, params string[] responseBodies)
+        : HttpMessageHandler
     {
         private readonly Queue<string> _responseBodies = new(responseBodies);
+
+        public StubHttpMessageHandler(params string[] responseBodies)
+            : this(System.Net.HttpStatusCode.OK, responseBodies)
+        {
+        }
 
         public List<HttpRequestMessage> Requests { get; } = [];
 
@@ -140,7 +172,7 @@ public class ClientTests
             CancellationToken cancellationToken)
         {
             Requests.Add(new HttpRequestMessage(request.Method, request.RequestUri));
-            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(statusCode)
             {
                 Content = new StringContent(_responseBodies.Dequeue()),
             });
