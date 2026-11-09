@@ -113,7 +113,7 @@ Don't do `feet / 12.0` or `degrees * PI / 180` inline. `UnitUtils` is the single
 
 **Exception — Revit ingestion exports.** `ExportHandler.BuildPayloadJson` deliberately sends geometry (areas, lengths, volumes) in raw Revit feet and only converts the project rotation to degrees. The `/revit/v0` contract has the HVAKR backend do the length conversion (see `.claude/skills/hvakr-api/SKILL.md`). Do **not** "fix" the export by converting lengths to inches — that double-converts and silently corrupts every exported model. The convert-at-the-boundary rule above applies to anything we read **back** from HVAKR into Revit.
 
-**Spatial sources.** `ExportHandler.CollectSpatialElements` exports the first source that has placed elements: host MEP spaces, then host rooms, then the spaces (or rooms) of each loaded Revit link, transformed into host coordinates. Cloud models are usually one discipline model of a federated set, so the host often has no MEP spaces. Use one source per export so nothing is sent twice. Linked element ids are prefixed with the link instance `UniqueId`.
+**Spatial sources.** `ExportHandler.CollectSpatialElements` exports the host model's MEP spaces, or its rooms when it has no enclosed MEP space. When the host has neither, it exports the spaces (or rooms) of each loaded Revit link, transformed into host coordinates. Cloud models are usually one discipline model of a federated set, so the host often has no MEP spaces. Host and links are never combined, so nothing is sent twice. Each document exports one phase only: the latest phase with an enclosed element (`ROOM_PHASE`, which spaces use too). Revit keeps one room per phase, so two phases would double areas and loads. The rule is `HVAKR.Api.SpatialSelection`, which has unit tests. Linked element ids are prefixed with the link instance `UniqueId`.
 
 ## Revit Plugin Patterns
 
@@ -145,7 +145,7 @@ This is intentional: the UI library targets the older surface to avoid APIs that
 
 One logger: `HVAKR.Api.Logger`. Writes to `%LOCALAPPDATA%\HVAKR\plugin.log` (falls back to `%TEMP%` if `LOCALAPPDATA` is unavailable). Handles file-locking internally and swallows its own exceptions — logging never throws.
 
-`HVAKR.Api.CredentialStore` saves the API key in `%LOCALAPPDATA%\HVAKR\credentials.bin`, encrypted with DPAPI for the current Windows user. The pane loads it on start, saves it after each login, and deletes it on **Log out** or when the API rejects it (401/403). Never write the key anywhere else, and never log it.
+`HVAKR.Api.CredentialStore` saves the API key in `%LOCALAPPDATA%\HVAKR\credentials.bin`, encrypted with DPAPI for the current Windows user. The pane loads it on start, saves it after each login, and deletes it only on **Log out** or when a saved key gets a 401. A 403 means the key is valid but the account has no license or no API access in its plan, so the key stays. A failed manual login never deletes the saved key. Never write the key anywhere else, and never log it.
 
 User-facing error surfaces:
 - Inside Revit context: `TaskDialog.Show("HVAKR", ...)`

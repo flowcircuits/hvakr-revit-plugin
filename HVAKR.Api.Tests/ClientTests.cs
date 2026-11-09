@@ -95,6 +95,20 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task A_license_or_plan_rejection_is_classified_as_no_API_access_not_an_invalid_key()
+    {
+        var handler = new StubHttpMessageHandler(
+            System.Net.HttpStatusCode.Forbidden,
+            """{"error":{"code":"permission_denied","message":"API access is not included in your plan"}}""");
+        using var http = new HttpClient(handler);
+        var client = new Client(http, "valid-token");
+
+        var error = await Assert.ThrowsAsync<HttpRequestException>(client.GetProjectsAsync);
+
+        Assert.Equal(LoginFailure.NoApiAccess, LoginFailures.Classify(error));
+    }
+
+    [Fact]
     public async Task GetProjectDetailsAsync_reads_modular_equipment_mode_metadata()
     {
         var handler = new StubHttpMessageHandler(

@@ -97,22 +97,17 @@ public class ExportHandler : IExternalEventHandler
     }
 
     /// <summary>
-    /// Picks the first source that has placed spatial elements: host MEP spaces, then host rooms,
-    /// then the spaces (or rooms) of each loaded Revit link. Cloud models are usually one discipline
-    /// model of a federated set, so the host often has no MEP spaces: the rooms are in the host
-    /// architectural model, or in a linked one. Only one source is used, so nothing is exported twice.
+    /// Exports the host model's spaces or rooms when it has any that are enclosed. Otherwise it exports
+    /// those of each loaded Revit link, transformed into host coordinates. Cloud models are usually one
+    /// discipline model of a federated set, so the host often has no usable MEP spaces: the rooms are in
+    /// the host architectural model, or in a linked one. Host and links are never combined, because host
+    /// MEP spaces are usually drawn over the linked rooms, and both would then be exported.
     /// </summary>
     private static SpatialSource CollectSpatialElements(Document document)
     {
-        var hostSpaces = PlacedSpatialElements(document, BuiltInCategory.OST_MEPSpaces);
-        if (hostSpaces.Count > 0)
-            return new SpatialSource("MEP spaces", hostSpaces.Select(e => new SourcedElement(e, Transform.Identity, null)).ToList());
-
-        var hostRooms = PlacedSpatialElements(document, BuiltInCategory.OST_Rooms);
-        if (hostRooms.Count > 0)
-            return new SpatialSource(
-                "rooms (the model has no placed MEP spaces)",
-                hostRooms.Select(e => new SourcedElement(e, Transform.Identity, null)).ToList());
+        var (hostKind, hostElements) = DocumentSpatialElements(document);
+        if (hostElements.Count > 0)
+            return new SpatialSource(hostKind, hostElements.Select(e => new SourcedElement(e, Transform.Identity, null)).ToList());
 
         var linked = new FilteredElementCollector(document)
             .OfClass(typeof(RevitLinkInstance))
@@ -120,24 +115,52 @@ public class ExportHandler : IExternalEventHandler
             .Where(link => link.GetLinkDocument() is not null) // skip unloaded links
             .SelectMany(link =>
             {
-                var linkDocument = link.GetLinkDocument();
-                var elements = PlacedSpatialElements(linkDocument, BuiltInCategory.OST_MEPSpaces);
-                if (elements.Count == 0) elements = PlacedSpatialElements(linkDocument, BuiltInCategory.OST_Rooms);
                 var transform = link.GetTotalTransform();
                 // Prefix with the link instance so two placements of the same link stay distinct in HVAKR.
-                return elements.Select(e => new SourcedElement(e, transform, link.UniqueId + "/"));
+                return DocumentSpatialElements(link.GetLinkDocument()).Elements
+                    .Select(e => new SourcedElement(e, transform, link.UniqueId + "/"));
             })
             .ToList();
-        return new SpatialSource("spaces and rooms from linked models (the model has no placed MEP spaces or rooms)", linked);
+        return new SpatialSource("spaces and rooms from linked models (the model has no enclosed MEP spaces or rooms)", linked);
     }
 
-    private static List<SpatialElement> PlacedSpatialElements(Document document, BuiltInCategory category) =>
-        new FilteredElementCollector(document)
+    /// <summary>
+    /// MEP spaces of one document, or its rooms when it has no enclosed MEP space. A stray not-enclosed
+    /// space (area 0) does not hide the rooms.
+    /// </summary>
+    private static (string Kind, List<SpatialElement> Elements) DocumentSpatialElements(Document document)
+    {
+        var spaces = PlacedSpatialElements(document, BuiltInCategory.OST_MEPSpaces);
+        return spaces.Count > 0
+            ? ("MEP spaces", spaces)
+            : ("rooms (the model has no enclosed MEP spaces)", PlacedSpatialElements(document, BuiltInCategory.OST_Rooms));
+    }
+
+    /// <summary>
+    /// Placed elements of one category in the latest phase that has an enclosed one. Revit keeps a
+    /// separate room or space per phase, so more than one phase would export the same room twice.
+    /// </summary>
+    private static List<SpatialElement> PlacedSpatialElements(Document document, BuiltInCategory category)
+    {
+        var phaseOrder = document.Phases
+            .Cast<Phase>()
+            .Select((phase, index) => (phase.Id.Value, index))
+            .ToDictionary(phase => phase.Value, phase => phase.index);
+        var placed = new FilteredElementCollector(document)
             .OfCategory(category)
             .WhereElementIsNotElementType()
             .OfType<SpatialElement>()
-            .Where(element => element.Location is not null && element.Level is not null) // skip unplaced elements
-            .ToList();
+            .Where(element => element.Location is not null && element.Level is not null); // skip unplaced elements
+
+        // Rooms and MEP spaces both store their phase in ROOM_PHASE.
+        return SpatialSelection.InLatestEnclosedPhase(
+            placed,
+            element => element.get_Parameter(BuiltInParameter.ROOM_PHASE)?.AsElementId() is { } phaseId
+                && phaseOrder.TryGetValue(phaseId.Value, out var index)
+                    ? index
+                    : -1,
+            element => element.Area > 0);
+    }
 
     private static object ToPayload(SourcedElement sourced)
     {
