@@ -111,7 +111,9 @@ public sealed class Client(HttpClient httpClient, string apiKey)
             var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var detail = string.IsNullOrWhiteSpace(body) ? response.ReasonPhrase : body.Trim();
             throw new HttpRequestException(
-                $"HVAKR API {method} {path} failed: {(int)response.StatusCode} {response.ReasonPhrase}. {detail}");
+                $"HVAKR API {method} {path} failed: {(int)response.StatusCode} {response.ReasonPhrase}. {detail}",
+                null,
+                response.StatusCode);
         }
     }
 }

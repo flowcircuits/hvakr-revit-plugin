@@ -13,6 +13,7 @@ public partial class MainPane : UserControl
 {
     private readonly IExportBridge? _exportBridge;
     private readonly UpdateService _updateService = new();
+    private readonly CredentialStore _credentialStore = new();
     private readonly bool _canInstallUpdates;
 
     private HttpClient? _httpClient;
@@ -47,6 +48,10 @@ public partial class MainPane : UserControl
     private async void MainPane_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainPane_Loaded;
+
+        var savedApiKey = _credentialStore.Load();
+        if (savedApiKey is not null) await LogInAsync(savedApiKey, isSavedKey: true);
+
         if (ShowSavedUpdateStatus()) return;
 
         CheckForUpdatesButton.IsEnabled = false;
@@ -91,6 +96,7 @@ public partial class MainPane : UserControl
     {
         if (_isLoggedIn)
         {
+            _credentialStore.Clear();
             Logout();
             return;
         }
@@ -102,6 +108,11 @@ public partial class MainPane : UserControl
             return;
         }
 
+        await LogInAsync(apiKey, isSavedKey: false);
+    }
+
+    private async Task LogInAsync(string apiKey, bool isSavedKey)
+    {
         LoginButton.IsEnabled = false;
         LoginButton.Content = "Logging in…";
 
@@ -110,30 +121,63 @@ public partial class MainPane : UserControl
             _httpClient = new HttpClient();
             _apiClient = new Client(_httpClient, apiKey);
 
-            var projects = await _apiClient.GetProjectsAsync();
-            if (projects.Count == 0)
-            {
-                MessageBox.Show("No projects found for this account.", "HVAKR", MessageBoxButton.OK, MessageBoxImage.Warning);
-                Logout();
-                return;
-            }
-
-            _projectsById = projects.ToDictionary(project => project.Id);
-            var items = projects
-                .Select(p => new ProjectListItem(p.Id, p.Name ?? p.Number ?? p.Id))
+            // Archived projects are finished work; exporting into one by mistake is hard to notice.
+            // The API already leaves out deleted projects, and templates are not projects.
+            var projects = (await _apiClient.GetProjectsAsync())
+                .Where(project => !project.IsArchived)
                 .ToList();
 
-            ProjectPicker.ItemsSource = items;
-            ProjectPicker.SelectedIndex = 0;
+            _projectsById = projects.ToDictionary(project => project.Id);
+            ProjectPicker.ItemsSource = projects
+                .Select(p => new ProjectListItem(p.Id, p.Name ?? p.Number ?? p.Id))
+                .ToList();
+            ProjectPicker.SelectedIndex = projects.Count > 0 ? 0 : -1;
+            ExportButton.IsEnabled = projects.Count > 0;
 
             _isLoggedIn = true;
             UpdateLoggedInState();
+            _credentialStore.Save(apiKey);
+
+            if (projects.Count == 0 && !isSavedKey)
+            {
+                MessageBox.Show(
+                    "This account has no active HVAKR projects. Use \"Create new HVAKR project\" to export this model.",
+                    "HVAKR",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
             Logger.LogError("Login failed", ex);
-            MessageBox.Show($"Login failed: {ex.Message}", "HVAKR", MessageBoxButton.OK, MessageBoxImage.Error);
             Logout();
+
+            var failure = LoginFailures.Classify(ex);
+            if (isSavedKey && failure == LoginFailure.InvalidKey)
+            {
+                // Only a 401 means the key itself is bad. The saved key is cleared here and on Log out, nowhere else.
+                _credentialStore.Clear();
+                MessageBox.Show(
+                    "Your saved HVAKR API key is no longer valid. Log in again with a current API key.",
+                    "HVAKR",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
+            // Keep the saved key and fill it in, so "Log in" retries it after the cause is fixed.
+            if (isSavedKey) ApiKeyBox.Password = apiKey;
+
+            var message = failure switch
+            {
+                LoginFailure.NoApiAccess =>
+                    "HVAKR accepted this API key, but the account cannot use the HVAKR API. Make sure the account " +
+                    $"has an active HVAKR license and that its plan includes API access.\n\n{ex.Message}",
+                // Offline or a server error when Revit starts: stay quiet. The filled-in key is ready for a retry.
+                _ when isSavedKey => null,
+                _ => $"Login failed: {ex.Message}",
+            };
+            if (message is not null) MessageBox.Show(message, "HVAKR", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

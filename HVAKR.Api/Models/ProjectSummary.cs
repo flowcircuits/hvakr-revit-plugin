@@ -17,4 +17,7 @@ public class ProjectSummary
     public string? ProjectType { get; set; }
     public double? Timestamp { get; set; }
     public double? LastOpenTime { get; set; }
+
+    // Matches ProjectStatuses.ARCHIVED in @hvakr/common.
+    public bool IsArchived => Status == "archived";
 }
