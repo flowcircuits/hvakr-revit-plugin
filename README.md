@@ -127,9 +127,45 @@ Releases are deliberate. Merging to `master` only builds and tests.
 Repository setup required before the first release:
 
 - Protect the `production` GitHub environment with required reviewers.
-- Add environment secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, and `GCP_SERVICE_ACCOUNT`.
+- Allow `production` deployments only from the `master` branch and `v*` tags. **Release** and a dispatched **Publish to GCS** run from `master`; a published release runs **Publish to GCS** from its `v*` tag.
+- Add environment secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and `GCP_WORKLOAD_IDENTITY_PROVIDER`.
 - Add environment variables `AZURE_ARTIFACT_SIGNING_ENDPOINT`, `AZURE_ARTIFACT_SIGNING_ACCOUNT`, and `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE`.
-- Grant the Azure workload identity only the Artifact Signing Certificate Profile Signer role. Grant the GCP workload identity write access only under `gs://hvakr-desktop-releases/revit/`.
+- Grant the Azure workload identity only the Artifact Signing Certificate Profile Signer role.
+- Set up Google Cloud as described in [Google Cloud publishing](#google-cloud-publishing).
+
+### Google Cloud publishing
+
+**Publish to GCS** uses direct Workload Identity Federation. Google Cloud exchanges the GitHub OIDC token of the `production` job for a federated token, and the bucket grants go to that federated identity. There is no service account, no impersonation, and no key.
+
+1. The provider is `hvakr-revit-plugin` in pool `github`, in project `dmux-366` (project number `825542032994`). Set the `production` environment secret `GCP_WORKLOAD_IDENTITY_PROVIDER` to its full resource name. This value is an identifier, not a credential.
+
+   ```text
+   projects/825542032994/locations/global/workloadIdentityPools/github/providers/hvakr-revit-plugin
+   ```
+
+2. The provider maps `google.subject` to `assertion.sub`, and `attribute.repository_id`, `attribute.repository_owner_id`, and `attribute.environment` to the claims with the same names. Its attribute condition accepts only `production` jobs of this repository. The two numbers are the IDs of the `flowcircuits` organization and this repository. They do not change on a rename. Keep them in quotes.
+
+   ```text
+   assertion.repository_owner_id == '108158726' &&
+   assertion.repository_id == '1218520414' &&
+   assertion.environment == 'production'
+   ```
+
+3. The bucket `hvakr-desktop-releases` must have uniform bucket-level access. Cloud Storage requires it for grants to federated principals. If it is off, review the object ACLs and public access with the bucket owner before you turn it on: turning it on can break access that depends on ACLs, and it becomes permanent after 90 days.
+4. On the bucket, grant **Storage Object User** (`roles/storage.objectUser`) to this principal. Use the pool's project number, not the bucket's project.
+
+   ```text
+   principalSet://iam.googleapis.com/projects/825542032994/locations/global/workloadIdentityPools/github/attribute.repository_id/1218520414
+   ```
+
+   Add this IAM condition, so the principal can read, write, and delete objects only under `revit/`:
+
+   ```text
+   resource.name.startsWith('projects/_/buckets/hvakr-desktop-releases/objects/revit/')
+   ```
+
+   The principal set includes identities from every provider in the `github` pool. Make sure no other provider in the pool can produce `repository_id` `1218520414`, and that no broader project or bucket grant applies to the principal.
+5. `gcloud storage cp` in `scripts/Publish-ToGcs.ps1` also needs `storage.objects.list` on the bucket. The condition in step 4 never matches the bucket itself, so that grant does not give it. Create a custom role in the bucket's project with only `storage.objects.list`, and grant it to the same principal on the bucket without a condition. The principal can then list object names in the whole bucket, including `desktop/`, but cannot read or write those objects. Get the bucket owner's approval before you grant it. If the owner does not approve, change the script to use object operations that do not list, and test it. Do not grant broader access.
 
 ### Testing in Revit
 

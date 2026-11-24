@@ -77,11 +77,12 @@ jobs:
           if ($env:ASSET_DIGEST -and $env:ASSET_DIGEST -ne "sha256:$hash") { throw "SHA256 $hash does not match GitHub's asset digest $env:ASSET_DIGEST." }
           ./scripts/Test-Bundle.ps1 -Zip $zip -Version $env:VERSION -RequireSignature
 
+      # Direct Workload Identity Federation: the federated identity itself has the bucket grants
+      # (README, Releasing). There is no service account to impersonate and no key.
       - name: Authenticate to Google Cloud with GitHub OIDC
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Setup Google Cloud CLI
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
