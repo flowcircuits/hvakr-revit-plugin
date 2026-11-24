@@ -127,6 +127,7 @@ Releases are deliberate. Merging to `master` only builds and tests.
 Repository setup required before the first release:
 
 - Protect the `production` GitHub environment with required reviewers.
+- Allow `production` deployments only from the `master` branch and `v*` tags. **Release** and a dispatched **Publish to GCS** run from `master`; a published release runs **Publish to GCS** from its `v*` tag.
 - Add environment secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and `GCP_WORKLOAD_IDENTITY_PROVIDER`.
 - Add environment variables `AZURE_ARTIFACT_SIGNING_ENDPOINT`, `AZURE_ARTIFACT_SIGNING_ACCOUNT`, and `AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE`.
 - Grant the Azure workload identity only the Artifact Signing Certificate Profile Signer role.
